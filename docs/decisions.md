@@ -109,3 +109,28 @@ of week *t*). We report metrics on both the full universe and the
 generics+injectables subset, and pick the headline once the backtest shows
 where the signal is. Restricting the universe early would hide whether the
 model just learns "injectables are risky".
+
+## D3/D4 implementation notes (Phase 2, 2026-10-29)
+
+Rules added while building D3/D4. Each covers a data quirk, not a change of
+intent:
+- **Route group:** every injectable collapses to `PARENTERAL` (IV vs IM;IV vials
+  are one family, as on FDA's list). Other routes keep their NDC route set.
+- **Electrolytes are not collapsed** to their bare-ion moiety. Potassium
+  chloride ≠ potassium acetate ≠ potassium phosphate.
+- **GSRS metabolite links are ignored** when the substance is itself a moiety
+  (gemcitabine stays gemcitabine).
+- **Delisted products** get a family only when their application holds a single
+  family, or the brand name settles it. Otherwise they are left unassigned.
+- **Single-capture blips** (Current in exactly one capture, then gone) are not
+  onsets. There are 4, 3 of them on the 2023-09-18 rename day.
+- **Listing-name mapping never guesses.** Ambiguous names stay unmapped and
+  are listed in `docs/unmapped_listing_names.csv`. Human decisions go in
+  `src/rxradar/transform/data/listing_name_overrides.csv` (empty so far).
+
+## D8. Evaluation unit — PROPOSED for Phase 3
+
+Positive family-weeks are not independent: each onset labels ~13 weeks at
+90 days. **Recommendation:** report event-level metrics (share of onsets
+flagged in the top-k at least N weeks ahead, plus lead time) alongside
+row-level PR-AUC, with bootstrap CIs resampled over onsets.
