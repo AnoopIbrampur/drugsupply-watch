@@ -24,6 +24,8 @@ import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
 
+import httpx
+
 from rxradar.http import PoliteClient
 from rxradar.paths import raw_snapshot_dir
 
@@ -122,3 +124,70 @@ def load_listings(snapshot_dir: Path) -> list[dict]:
         for row in parse_listing(html):
             out.append({"capture_ts": ts, "name": row.name, "status": row.status})
     return out
+
+
+# The same list page has been captured under other URL forms (site root,
+# old "Drugshortages.cfm" link, tracking query strings). They are only worth
+# fetching inside gaps of the main capture series.
+ALT_URLS = [
+    (PAGE, "prefix"),
+    ("accessdata.fda.gov/scripts/drugshortages/", "exact"),
+    ("accessdata.fda.gov/scripts/drugshortages/Drugshortages.cfm", "exact"),
+]
+
+
+def find_gap_captures(
+    client: PoliteClient, timestamps: list[str], min_gap_days: int = 22
+) -> list[tuple[str, str]]:
+    """Return (timestamp, original_url) captures of alternate URL forms that
+    fall inside gaps of ``timestamps`` longer than ``min_gap_days``."""
+    days = sorted({dt.datetime.strptime(t[:8], "%Y%m%d") for t in timestamps})
+    found: dict[str, str] = {}
+    for a, b in zip(days[:-1], days[1:], strict=True):
+        if (b - a).days < min_gap_days:
+            continue
+        for url, match in ALT_URLS:
+            params = {
+                "url": url,
+                "matchType": match,
+                "from": (a + dt.timedelta(days=1)).strftime("%Y%m%d"),
+                "to": (b - dt.timedelta(days=1)).strftime("%Y%m%d"),
+                "output": "json",
+                "fl": "timestamp,original",
+                "filter": "statuscode:200",
+            }
+            try:
+                rows = client.get_json(CDX_URL, params=params)[1:]
+            except (ValueError, httpx.HTTPStatusError) as exc:
+                # Empty body, HTML error page, or the CDX server is overloaded
+                # (persistent 503s seen 2026-10-29). Skip this window; a rerun
+                # picks it up.
+                log.warning("CDX failed for %s %s..%s: %s", url, params["from"], params["to"], exc)
+                continue
+            for ts, original in rows:
+                if "dsp_" not in original:  # detail pages are not the full list
+                    found.setdefault(ts, original)
+    return sorted(found.items())
+
+
+def ingest_gap_fill(client: PoliteClient, snapshot_dir: Path) -> int:
+    """Download alternate-URL captures inside gaps (weekly at most) into the
+    same snapshot directory. Returns the number of new captures saved."""
+    have = [p.name.split(".")[0] for p in snapshot_dir.glob("*.html.gz")]
+    extra = find_gap_captures(client, have)
+    keep = set(weekly(ts for ts, _ in extra))
+    saved = 0
+    for ts, original in extra:
+        path = snapshot_dir / f"{ts}.html.gz"
+        if ts not in keep or path.exists():
+            continue
+        url = f"https://web.archive.org/web/{ts}id_/{original}"
+        try:
+            body = client.get_bytes(url)
+        except Exception as exc:
+            log.warning("gap capture %s failed: %s", ts, exc)
+            continue
+        if parse_listing(body.decode("utf-8", errors="replace")):
+            path.write_bytes(gzip.compress(body))
+            saved += 1
+    return saved
