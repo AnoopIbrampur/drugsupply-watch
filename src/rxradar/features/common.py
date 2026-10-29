@@ -16,10 +16,10 @@ NS = "datetime64[ns]"
 
 
 def family_grid(sources: dict[str, pd.DataFrame], weeks: pd.DatetimeIndex) -> pd.DataFrame:
-    """(week, family) for every family once its first record (product or
-    listing) is published."""
+    """(week, family) for every family once its first record (product,
+    listing or NDC snapshot row) is published."""
     firsts = []
-    for name in ("products", "listings"):
+    for name in ("products", "listings", "ndc"):
         df = sources.get(name)
         if df is not None and len(df):
             firsts.append(df.dropna(subset=["family"]).groupby("family").published.min())

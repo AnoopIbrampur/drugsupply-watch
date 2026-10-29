@@ -6,3 +6,5 @@ __pycache__/
 # Raw and derived data are reproducible from ingest; never commit them.
 /data/
 .env
+# DuckDB spill files
+.tmp/
