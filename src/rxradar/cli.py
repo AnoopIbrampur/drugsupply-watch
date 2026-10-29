@@ -29,6 +29,8 @@ def ingest(source: str) -> None:
         client = _openfda_client()
         for dataset in openfda.DATASETS:
             openfda.ingest_dataset(client, dataset)
+    if source == "substance":  # reference data, not part of "all"
+        openfda.ingest_dataset(_openfda_client(), "substance")
     if source in ("all", "archive"):
         fda_shortage_archive.ingest(_archive_client())
     if source in ("all", "registry"):
@@ -52,7 +54,8 @@ def main(argv: list[str] | None = None) -> None:
     sub = parser.add_subparsers(dest="cmd", required=True)
     p_ingest = sub.add_parser("ingest", help="download raw snapshots")
     p_ingest.add_argument(
-        "source", choices=["all", "openfda", "archive", "registry", "warning_letters", "nadac"]
+        "source",
+        choices=["all", "openfda", "substance", "archive", "registry", "warning_letters", "nadac"],
     )
     args = parser.parse_args(argv)
     logging.basicConfig(

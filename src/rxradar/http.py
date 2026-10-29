@@ -34,7 +34,7 @@ class PoliteClient:
     def __init__(
         self,
         min_interval: float = 0.5,
-        max_retries: int = 5,
+        max_retries: int = 8,
         timeout: float = 120.0,
         cache_dir: Path | None = None,
         transport: httpx.BaseTransport | None = None,
@@ -86,7 +86,7 @@ class PoliteClient:
                 if attempt == self.max_retries:
                     resp.raise_for_status()
                 log.warning("HTTP %s on %s; retrying", resp.status_code, url)
-            time.sleep(min(2**attempt, 60))
+            time.sleep(min(2**attempt, 120))
         raise RuntimeError("unreachable")
 
     def get_json(self, url: str, params: dict | None = None, use_cache: bool = False):
