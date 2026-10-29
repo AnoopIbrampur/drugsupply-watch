@@ -104,3 +104,50 @@ def test_delisted_products_resolve_through_application():
         "ambiguous_application",
         "no_drugsfda_match",
     ]
+
+
+def test_route_spellings_and_premixed_bags_unify():
+    products = pd.DataFrame(
+        {
+            "SUBSTANCENAME": ["DEXTROSE", "DEXTROSE", "MORPHINE", "MORPHINE"],
+            "DOSAGEFORMNAME": ["SOLUTION", "INJECTION, SOLUTION", "SOLUTION", "INHALANT"],
+            "ROUTENAME": ["INTRAVENOUS", "INTRAVENOUS", "RESPIRATORY (INHALATION)", "INHALATION"],
+        }
+    )
+    fam = product_families(products, MoietyResolver(NAMES, MOIETY)).family.tolist()
+    assert fam[0] == fam[1] == "5SL0G7R0OK|INJECTION|PARENTERAL"
+    assert fam[2].endswith("|LIQUID|INHALATION") and fam[3].endswith("|INHALANT|INHALATION")
+
+
+def test_metabolite_moiety_links_do_not_move_the_parent():
+    from rxradar.transform.families import resolve_moiety_links
+
+    links = pd.DataFrame(
+        [
+            ("GEMHCL", "GEM"),  # salt -> parent
+            ("GEM", "GEMDP"),  # parent lists metabolites as "active moieties"
+            ("GEM", "GEMTP"),
+            ("GEMDP", "GEMDP"),
+            ("SALT2", "A"),
+            ("SALT2", "B"),  # ambiguous, neither is a self-moiety
+        ],
+        columns=["unii", "moiety_unii"],
+    )
+    out = resolve_moiety_links(links)
+    assert out["GEMHCL"] == "GEM" and out["GEM"] == "GEM"
+    assert out["SALT2"] == "SALT2"
+
+
+def test_electrolyte_salts_do_not_collapse_to_ion():
+    names = pd.DataFrame(
+        [
+            ("POTASSIUM CHLORIDE", "KCL", True),
+            ("POTASSIUM ACETATE", "KAC", True),
+            ("POTASSIUM ION", "K", True),
+        ],
+        columns=["name_norm", "unii", "preferred"],
+    )
+    links = pd.DataFrame([("KCL", "K"), ("KAC", "K")], columns=["unii", "moiety_unii"])
+    r = MoietyResolver(names, links)
+    assert r.moiety("Potassium Chloride") == "KCL"
+    assert r.moiety("Potassium Acetate") == "KAC"

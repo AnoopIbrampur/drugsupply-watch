@@ -48,14 +48,51 @@ def form_group(dosage_form: str) -> str:
     return form_groups().get(" ".join(dosage_form.upper().split()), "UNMAPPED")
 
 
+# Same route, different spelling in NDC vs Drugs@FDA.
+ROUTE_SYNONYMS = {
+    "RESPIRATORY (INHALATION)": "INHALATION",
+    "INTRABRONCHIAL": "INHALATION",
+    "ORAL-21": "ORAL",
+}
+# Forms that, given by a parenteral route, are injections in practice (e.g.
+# Drugs@FDA lists premixed IV bags as "SOLUTION" + "INTRAVENOUS").
+PARENTERAL_AS_INJECTION = {"LIQUID", "POWDER", "OTHER", "UNMAPPED", "KIT"}
+
+
 def route_group(route: str, form: str) -> str:
     # Drugs@FDA writes cycle packs as "ORAL-28"; the suffix is not a route.
-    routes = {
-        re.sub(r"-\d+$", "", r.strip().upper()) for r in re.split(r"[;,]", route) if r.strip()
-    }
+    cleaned = (re.sub(r"-\d+$", "", r.strip().upper()) for r in re.split(r"[;,]", route))
+    routes = {ROUTE_SYNONYMS.get(r, r) for r in cleaned if r}
     if form.startswith("INJECTION") or routes & PARENTERAL_ROUTES:
         return "PARENTERAL"
     return ";".join(sorted(routes)) or "UNKNOWN"
+
+
+def resolve_moiety_links(moiety: pd.DataFrame) -> dict[str, str]:
+    """Pick one active moiety per substance from GSRS ACTIVE MOIETY links.
+
+    GSRS sometimes lists several "active moieties" for one substance. For
+    example, gemcitabine lists its active metabolites (di-/triphosphate), and
+    taking the last link would move gemcitabine into a family of its own.
+    Rules, in order:
+    1. A substance that is anyone's moiety (including its own) is its own moiety.
+    2. A single link is used as given.
+    3. Among several links, use the one target that is itself a moiety.
+    4. Otherwise keep the substance itself rather than guess.
+    """
+    known_moieties = set(moiety.moiety_unii)
+    self_moieties = set(moiety.unii[moiety.unii == moiety.moiety_unii])
+    out = {}
+    for unii, targets in moiety.groupby("unii").moiety_unii:
+        targets = sorted(set(targets))
+        if unii in known_moieties:
+            out[unii] = unii
+        elif len(targets) == 1:
+            out[unii] = targets[0]
+        else:
+            selfs = [t for t in targets if t in self_moieties]
+            out[unii] = selfs[0] if len(selfs) == 1 else unii
+    return out
 
 
 class MoietyResolver:
@@ -66,17 +103,33 @@ class MoietyResolver:
         # *preferred* name wins: preferred rows come last and overwrite.
         ordered = names.sort_values("preferred", kind="stable")
         self.name_to_unii = dict(zip(ordered.name_norm, ordered.unii, strict=True))
-        self.unii_to_moiety = dict(zip(moiety.unii, moiety.moiety_unii, strict=True))
+        self.unii_to_moiety = resolve_moiety_links(moiety)
+        # Electrolytes (potassium chloride vs acetate vs phosphate) are
+        # different drugs whose GSRS moiety is a bare ion; collapsing them
+        # would merge distinct shortages. Salts whose moiety is an ion keep
+        # their own UNII.
+        is_ion = names.name_norm.str.contains(r"\b(?:ION|CATION|ANION)$", regex=True)
+        self.ion_uniis = frozenset(names.unii[is_ion])
+
+    # GSRS sometimes names only the hydrate/anhydrous forms (no plain
+    # "AZITHROMYCIN"). These suffixes resolve to the same active moiety, so
+    # retrying with them can't move a drug into the wrong family.
+    FORM_SUFFIXES = ("", " ANHYDROUS", " DIHYDRATE", " MONOHYDRATE", " TRIHYDRATE")
 
     def unii(self, name: str) -> str | None:
-        return self.name_to_unii.get(normalize_substance_name(name))
+        base = normalize_substance_name(name)
+        for suffix in self.FORM_SUFFIXES:
+            if (u := self.name_to_unii.get(base + suffix)) is not None:
+                return u
+        return None
 
     def moiety(self, name: str) -> str:
         u = self.unii(name)
         if u is None:
             return "NAME:" + normalize_substance_name(name)
         # A substance with no ACTIVE MOIETY link is its own moiety.
-        return self.unii_to_moiety.get(u, u)
+        m = self.unii_to_moiety.get(u, u)
+        return u if m in self.ion_uniis else m
 
 
 def family_key(moieties: list[str], form: str, route: str) -> str:
@@ -94,6 +147,8 @@ def product_families(products: pd.DataFrame, resolver: MoietyResolver) -> pd.Dat
     out["route_group"] = [
         route_group(r, f) for r, f in zip(out.ROUTENAME, out.form_group, strict=True)
     ]
+    as_injection = (out.route_group == "PARENTERAL") & out.form_group.isin(PARENTERAL_AS_INJECTION)
+    out.loc[as_injection, "form_group"] = "INJECTION"
     out["moieties"] = [
         sorted({resolver.moiety(n) for n in s.split(";") if n.strip()}) if s else []
         for s in out.SUBSTANCENAME
