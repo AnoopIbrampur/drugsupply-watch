@@ -63,3 +63,24 @@ def test_no_future_information_used():
     s_early = early.set_index("key").loc["drug b capsule"].start
     s_full = full.set_index("key").loc["drug b capsule"].start
     assert s_early == s_full
+
+
+def test_approx_family_key_bridges_2023_renaming():
+    from rxradar.transform.shortage_episodes import approx_family_key
+
+    pairs = [
+        ("Amifostine Injection", "Amifostine Injection, Powder, Lyophilized, For Solution"),
+        ("Amoxapine Tablets", "Amoxapine Tablet"),
+        ("Alprostadil (Muse) Suppository", "Alprostadil Suppository"),
+        ("Amoxicillin Oral Powder for Suspension", "Amoxicillin Powder, For Suspension"),
+    ]
+    for old, new in pairs:
+        assert approx_family_key(old) == approx_family_key(new), (old, new)
+    assert approx_family_key("Digoxin Injection") != approx_family_key("Digoxin Tablet")
+
+
+def test_diluent_words_kept_when_they_are_the_drug():
+    from rxradar.transform.shortage_episodes import approx_family_key
+
+    assert approx_family_key("Dextrose Monohydrate 5% Injection").startswith("dextrose")
+    assert "water" in approx_family_key("Sterile Water for Injection")

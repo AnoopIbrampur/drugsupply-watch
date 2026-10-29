@@ -39,20 +39,77 @@ def normalize_name(name: str) -> str:
     return " ".join(s.split())
 
 
+FORM_GROUPS = [  # first match wins; order matters ("ophthalmic solution" is ophthalmic)
+    ("ophthalmic", "OPHTHALMIC"),
+    ("otic", "OTIC"),
+    ("inhal", "INHALATION"),
+    ("nasal", "NASAL"),
+    ("spray", "NASAL"),
+    ("inject", "INJECTION"),
+    ("infusion", "INJECTION"),
+    ("vial", "INJECTION"),
+    ("irrigat", "IRRIGATION"),
+    ("tablet", "TABLET"),
+    ("capsule", "CAPSULE"),
+    ("suppositor", "RECTAL"),
+    ("cream", "TOPICAL"),
+    ("ointment", "TOPICAL"),
+    ("gel", "TOPICAL"),
+    ("topical", "TOPICAL"),
+    ("patch", "TRANSDERMAL"),
+    ("suspension", "ORAL_LIQUID"),
+    ("solution", "ORAL_LIQUID"),
+    ("oral", "ORAL_LIQUID"),
+]
+# Words that describe the form or packaging rather than the ingredient.
+_FORM_WORDS = frozenset(
+    """
+    injection injections injectable tablet tablets capsule capsules solution solutions
+    suspension powder powders lyophilized for oral film coated chewable extended delayed
+    release orally disintegrating ophthalmic otic inhalation nasal spray topical cream
+    ointment gel suppository suppositories irrigation infusion premix premixed
+    concentrate sterile single dose multi vial vials kit emulsion liquid syrup elixir
+    drops and in with plastic container bag usp per mg ml mcg g units
+    unit hcl
+    """.split()  # noqa: SIM905 - a word list reads better than a quoted list
+)
+
+
+def form_group(name: str) -> str:
+    low = name.lower()
+    return next((group for word, group in FORM_GROUPS if word in low), "OTHER")
+
+
+def approx_family_key(name: str) -> str:
+    """Rough ingredient + form-group key from a listing name alone.
+
+    Phase 1 stand-in for the real family key (docs/decisions.md D3/D5), which
+    will come from NDC/UNII data. It exists to bridge FDA's 2023-09 renaming,
+    e.g. "Amifostine Injection" -> "Amifostine Injection, Powder, Lyophilized,
+    For Solution", which would otherwise create fake new episodes.
+    """
+    s = re.sub(r"\([^)]*\)", " ", name.lower())
+    words = re.findall(r"[a-z]+", s)
+    ingredients = sorted({w for w in words if w not in _FORM_WORDS and len(w) > 2})
+    return " ".join(ingredients) + " | " + form_group(name)
+
+
 def build_episodes(
     listings: pd.DataFrame,
     max_capture_gap_days: int = MAX_CAPTURE_GAP_DAYS,
     merge_gap_days: int = MERGE_GAP_DAYS,
+    key_fn=normalize_name,
 ) -> pd.DataFrame:
     """Build episodes from rows of (capture_ts, name, status).
 
-    Returns one row per episode with: key, start, end (last capture seen as
+    ``key_fn`` maps a listing name to the episode key (default: lightly
+    normalized name). Returns one row per episode with: key, start, end (last capture seen as
     Current), start_censored (could have started earlier than observed), and
     ongoing (still Current in the last capture).
     """
     df = listings.copy()
     df["date"] = pd.to_datetime(df["capture_ts"].str[:8], format="%Y%m%d")
-    df["key"] = df["name"].map(normalize_name)
+    df["key"] = df["name"].map(key_fn)
     captures = sorted(df["date"].unique())
     prev_capture = dict(zip(captures[1:], captures[:-1], strict=True))
     last_capture = captures[-1]
