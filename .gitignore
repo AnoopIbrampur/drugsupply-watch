@@ -4,5 +4,5 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 # Raw and derived data are reproducible from ingest; never commit them.
-data/
+/data/
 .env
