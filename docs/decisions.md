@@ -14,22 +14,22 @@ tests import the *installed* package, not the working directory, so import
 errors and missing files surface in CI instead of hiding locally. Throwaway
 audit analyses live in `scripts/` and are not part of the package.
 
-## D2. Using Internet Archive copies of FDA's shortage page — PROPOSED (approved for investigation 2026-10-29; confirm for labels)
+## D2. Using Internet Archive copies of FDA's shortage page — DECIDED 2026-10-29 (label source)
 
 FDA publishes no shortage history: openFDA and FDA's own page list only
 current shortages, discontinuations and a few recently resolved ones. The
 Wayback Machine holds about daily copies of FDA's public list page since
 2014-06. These are verbatim copies of a government page, not a third-party
 shortage list (we do **not** use ASHP or any licensed list). On 2026-10-29 the
-owner approved investigating this source. Using it as the label source still
-needs their confirmation.
+owner approved investigating this source, and after the Phase 1 audit approved
+it as the label source.
 
 Cost: our label history depends on a non-government archive's capture
 schedule, including one gap from 2024-09 to 2025-09. Mitigation: from now on
 we snapshot openFDA and FDA's page ourselves every day, so future labels
 don't depend on the Archive.
 
-## D3. Drug-family key — PROPOSED
+## D3. Drug-family key — DECIDED 2026-10-29: option A, salts collapsed to active moiety
 
 **Recommendation: `sorted active-ingredient UNIIs + coarse dosage form + route`.**
 For example `{LX22YL083G}|INJECTION|INTRAVENOUS` for dextrose injection.
@@ -52,7 +52,7 @@ Open question for the owner: should salts collapse to the parent moiety
 listings already mix salts, and splitting them would scatter one shortage
 over several families.
 
-## D4. Label definition — PROPOSED
+## D4. Label definition — DECIDED 2026-10-29: 90-day primary horizon, 30-day also reported
 
 **Recommendation:** for family *f* and week *t*, `y = 1` if a **new** FDA
 shortage episode for *f* starts in `(t, t + 90 days]`. A new episode means
@@ -94,8 +94,18 @@ openFDA `generic_name` field. Plan:
    + form words and match against NDC substance names (current + excluded
    products). Report unmatched names; hand-curate if fewer than ~100.
 
-## D6. Inspections and compliance data source — OPEN (needs owner action)
+## D6. Inspections and compliance data source — DECIDED 2026-10-29: option (a)
 
 FDA Data Dashboard inspection/compliance exports can't be downloaded
-programmatically without credentials (see data_audit.md §5e). Options are in
-the audit.
+programmatically without credentials (see data_audit.md §5e). The owner is
+requesting a free API key. It will be read from the `FDA_DD_USER` /
+`FDA_DD_KEY` environment variables and never committed.
+
+## D7. Scoring universe — PROPOSED
+
+**Recommendation:** build the weekly panel over **all** Rx families, tagging
+each family-week with `multisource_generic` and `injectable` flags (known as
+of week *t*). We report metrics on both the full universe and the
+generics+injectables subset, and pick the headline once the backtest shows
+where the signal is. Restricting the universe early would hide whether the
+model just learns "injectables are risky".
