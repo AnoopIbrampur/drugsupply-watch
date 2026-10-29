@@ -11,7 +11,9 @@
 | openFDA drug shortages | Bulk zip (0.4 MB), no key needed | **Current state only** (1,604 records) | package NDC, generic name, openfda UNII/route/spl_set_id | ✅ ingested |
 | FDA shortage list page, archived by Wayback Machine | CDX API + `id_` raw captures | 2014-06-22 → 2026-10-24, about daily, 462 weekly captures used | Listing name (= openFDA `generic_name`), status | ✅ ingested (label source, see D2) |
 | openFDA NDC directory | Bulk zip (26 MB) | Current listings only | product/package NDC, labeler, UNII | ✅ ingested |
-| FDA NDC text files incl. `ndc_excluded.zip` | Bulk zips on accessdata.fda.gov | **207k delisted products with start/end marketing dates** | product NDC, labeler name | ✅ ingested |
+| FDA NDC text files incl. `ndc_excluded.zip` | Bulk zips on accessdata.fda.gov | **207k delisted products with start/end marketing dates** (no ingredient/form/route; see §5e.7) | product NDC, labeler name, application number | ✅ ingested |
+| openFDA Drugs@FDA | Bulk zip | Approved applications incl. discontinued products | application number, ingredients, form, route | ✅ ingested (Phase 2) |
+| openFDA substance (GSRS) | Bulk zip (2.4 GB JSON) | Reference | UNII, names/synonyms, active-moiety links | ✅ ingested (Phase 2) |
 | FDA establishment registrations (DECRS, `drls_reg`/`drls_excluded`) | Bulk zips | Current plus excluded registrations | **FEI, DUNS**, firm name, address, operations | ✅ ingested |
 | openFDA drug enforcement (recalls) | Bulk zip (3.8 MB) | report_date 2012-06 → 2026-10 (18,048 recalls) | recalling firm, free-text product, 17% have NDC block | ✅ ingested |
 | FDA warning letters (fda.gov table export) | xlsx export | **Capped at 1,000 rows** (letters posted ~2021–2026) | company name only, no FEI | ⚠️ partial |
@@ -239,6 +241,131 @@ data keyed by FEI. Route 1 is a fallback at about 44% coverage.
    these are self-reported, may be backfilled, and products purged before the
    file existed are missing. Manufacturer counts for early years will therefore
    be undercounts. This needs a sensitivity check in Phase 2.
+   **Correction (Phase 2):** the excluded file has *no* ingredient, dosage
+   form, route or product type. Those columns are 0% filled for all 207,190
+   rows. It only names the NDC, labeler, brand, marketing category,
+   application number and dates. Phase 1 overstated what it gives on its own.
+   The fix is in Phase 2 below: link through the application number to
+   Drugs@FDA.
 8. **openFDA API date-range queries:** an `initial_posting_date:[… TO …]`
    search failed in testing. That was a curl globbing mistake (`[` needs `-g`),
    not an API problem. Dates in this endpoint are `MM/DD/YYYY` strings.
+
+---
+
+# Phase 2 update (2026-10-29): families, labels, weekly table
+
+All numbers below come from `make build` followed by `scripts/audit_listing_mapping.py`
+and `scripts/audit_phase2.py`.
+
+## Drug families (D3 as built)
+
+- Key: `sorted active-moiety UNIIs | coarse form | route group`, e.g.
+  `B76N6SBZ8R|INJECTION|PARENTERAL` (gemcitabine injection).
+- Ingredient names resolve to UNIIs through 987k GSRS names and synonyms, then to an
+  active moiety through 32.6k GSRS ACTIVE MOIETY links. 99.9% of current Rx NDC products
+  resolve every ingredient.
+- Dosage forms map through a reviewed crosswalk:
+  `src/rxradar/transform/data/dosage_form_groups.csv`, 150 NDC and Drugs@FDA
+  spellings mapped into 27 groups.
+- **Delisted products:** 85,235 delisted Rx products (ANDA/NDA/BLA) get a family through
+  their application number in Drugs@FDA.
+  - 91.6% resolve overall: ANDA 98.3%, NDA 94.8%, authorized generics 98.3%, BLA 6.7%.
+  - BLAs mostly aren't in Drugs@FDA; the Purple Book would be the fix.
+  - 407 applications hold several families and are left unassigned rather than guessed.
+- The result is **3,938 families** (3,179 with a currently listed product) across
+  142,144 current and delisted products.
+
+Data surprises found while building this:
+1. **GSRS lists metabolites as "active moieties".** For example, gemcitabine lists its
+   di- and triphosphate. 194 substances have several moiety links. Rule: a substance that
+   is anyone's moiety is its own moiety (`resolve_moiety_links`).
+2. **Electrolytes collapse to bare ions.** Potassium chloride, acetate and phosphate all
+   have moiety "potassium ion". Salts whose moiety is an ion keep their own UNII, so these
+   stay separate families.
+3. **Spellings differ between NDC and Drugs@FDA:** `RESPIRATORY (INHALATION)` vs
+   `INHALATION`, `INJECTABLE` vs `INJECTION, SOLUTION`, `ORAL-28`. Drugs@FDA also lists
+   premixed IV bags as `SOLUTION` with an intravenous route. All of these are normalized.
+
+## Archived listing names → families (D5)
+
+| | names | |
+|---|---|---|
+| Distinct listing names, 2014–2026 | 2,090 | |
+| Mapped via openFDA `generic_name` | 210 | exact NDC link |
+| Mapped by parsing ingredients + form/route words | 1,623 | incl. 13 where the release type was relaxed ("Desvenlafaxine Tablets" when only ER tablets exist) |
+| **Mapped overall** | **87.7%** | |
+| Mapped among the 660 names ever listed as Current | **90.3%** | **92.9%** weighted by Current listing-weeks |
+
+- **Spot check:** in 30 random parsed mappings, the ingredient, form and route were
+  plausible for all 30. Checked by GSRS synonym, e.g. DOZIC = haloperidol, 3TC = lamivudine.
+- **Bugs fixed during the check:**
+  - Unit tokens matched GSRS synonyms: "mg" is magnesium and "ER" is erbium, which turned
+    "Epinephrine 0.1 mg/mL" into a two-ingredient drug.
+  - Diluents ("… in 0.9% Sodium Chloride") added an ingredient the NDC record doesn't list.
+- **Unmapped:** 64 Current names, listed in `docs/unmapped_listing_names.csv`. They are
+  mostly multi-ingredient product classes (multivitamin infusion, peritoneal dialysis and
+  CRRT solutions, amino acids, IV fat emulsions, trace elements), radiopharmaceuticals,
+  and products discontinued before the NDC history. The reviewed override file
+  (`data/listing_name_overrides.csv`) is empty so far.
+
+## Family episodes and labels (D4 as built)
+
+- **Episodes:** 429 at family level, 274 with a dated start across 239 families.
+  - 4 of those are single-capture blips (3 on the 2023-09-18 rename day, e.g. a
+    one-week "Metronidazole Solution"). They are not counted as onsets, which leaves
+    **270 dated onsets**.
+  - Median duration is 553 days; p90 is 2,045.
+- **Dated starts per year:** 2014: 3, 2015: 15, 2016: 19, 2017: 34, 2018: 30, 2019: 11,
+  2020: 40, 2021: 29, 2022: 40, 2023: 42, 2024: 6, 2025: 0 (capture gap), 2026: 5.
+  - Compared with the Phase 1 name-keyed counts, 2023 drops from 78 to 42, which shows
+    the family key absorbs most of the rename.
+  - About 10 starts on 2023-09-18 remain. Several are real 2023 shortages
+    (methylphenidate tablets, chewable lisdexamfetamine, ketorolac tablets); a few may be
+    rename artifacts.
+
+## Weekly family table (`data/derived/panel.parquet`)
+
+- 1,907,383 rows = 3,767 families × 644 weeks (2014-06 → 2026-10), about 2,990 families
+  per week.
+- Usable rows have a known horizon and are not in shortage at *t*:
+
+| | usable rows | positive rows | rate | share of positives |
+|---|---|---|---|---|
+| **y90**, all families | 1,034,625 (54%) | 2,481 | 0.240% | 100% |
+| injectable | 252,743 | 1,454 | 0.575% | 59% |
+| multi-source generic | 462,840 | 1,463 | 0.316% | 59% |
+| generic **or** injectable | 641,536 | 2,063 | 0.322% | 83% |
+| neither | 393,089 | 418 | 0.106% | 17% |
+| **y30**, all families | 1,237,439 (65%) | 1,028 | 0.083% | |
+
+- Positive *rows* are not independent events. Each onset labels about 13 consecutive
+  weeks at 90 days. Evaluation must count events (onsets caught), not rows, and
+  bootstrap over onsets.
+- Usable 90-day rows by year are sparse in 2014–15, 2018 and 2019 (capture gaps), and
+  2025 has no positives. The backtest's evaluation years are realistically 2016–2017
+  and 2020–2023, plus 2024 and 2026 as a thin recent check.
+
+**Point-in-time caveats:**
+- Universe membership uses self-reported NDC marketing dates, which may be backfilled
+  (see `transform/panel.py`). This affects which rows exist, not labels. Phase 3
+  manufacturer counts need a stricter treatment.
+- Row exclusion (`in_shortage_now`) reads only the capture at *t*; this is tested.
+
+## Wayback gap fill
+
+- Alternate URL forms of the list page (`drugshortages/`, `Drugshortages.cfm`,
+  query-string variants) are searched inside each capture gap
+  (`fda_shortage_archive.find_gap_captures`).
+- On 2026-10-29 the CDX server answered almost every request with HTTP 503, so the search
+  is running at one request per 5 s and **no captures have been recovered yet**. It's
+  resumable; rerun with the snippet in the Phase 2 report.
+
+## FDA Data Dashboard
+
+- The client (`ingest/fda_dashboard.py`) is written from the published OpenAPI spec and
+  docs: POST `api-datadashboard.fda.gov/v1/<endpoint>`, 5,000 rows per page, statuscode
+  400 = success.
+- It is **untested against the live API** until `FDA_DD_USER` / `FDA_DD_KEY` exist.
+- Features must date inspection outcomes by `FMD145Date` (final classification letter),
+  not `InspectionEndDate`.
