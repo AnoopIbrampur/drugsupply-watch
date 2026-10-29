@@ -11,8 +11,9 @@ from rxradar.paths import cache_dir
 
 
 def _openfda_client() -> PoliteClient:
-    # openFDA allows 240 requests/min; bulk files need only a handful of calls.
-    return PoliteClient(min_interval=0.3)
+    # Used for openFDA and other .gov bulk files: a handful of large downloads,
+    # so a short gap is plenty (openFDA allows 240 requests/min).
+    return PoliteClient(min_interval=0.3, timeout=600)
 
 
 def _archive_client() -> PoliteClient:
@@ -34,14 +35,16 @@ def ingest(source: str) -> None:
         from rxradar.ingest import fda_registry
 
         fda_registry.ingest(_openfda_client())
-    if source in ("all", "inspections"):
-        from rxradar.ingest import fda_inspections
+    if source in ("all", "warning_letters"):
+        from rxradar.ingest import warning_letters
 
-        fda_inspections.ingest(_openfda_client())
+        warning_letters.ingest(_openfda_client())
     if source in ("all", "nadac"):
         from rxradar.ingest import nadac
 
         nadac.ingest(_openfda_client())
+    # FDA Data Dashboard inspections are not ingested: they need an API
+    # credential (see docs/data_audit.md).
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -49,7 +52,7 @@ def main(argv: list[str] | None = None) -> None:
     sub = parser.add_subparsers(dest="cmd", required=True)
     p_ingest = sub.add_parser("ingest", help="download raw snapshots")
     p_ingest.add_argument(
-        "source", choices=["all", "openfda", "archive", "registry", "inspections", "nadac"]
+        "source", choices=["all", "openfda", "archive", "registry", "warning_letters", "nadac"]
     )
     args = parser.parse_args(argv)
     logging.basicConfig(
