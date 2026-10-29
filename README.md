@@ -22,5 +22,7 @@ make test
 make ingest   # downloads raw snapshots into data/raw/
 ```
 
-Set `OPENFDA_API_KEY` (free) in your environment for higher openFDA rate limits.
-It is optional.
+All sources are free bulk downloads; no API keys are needed today. `make ingest`
+takes hours on a first run, mostly the Medicaid NADAC history (~170 KB/s from
+data.medicaid.gov). Re-runs skip immutable files. Run single sources with
+`uv run rxradar ingest <openfda|archive|registry|warning_letters|nadac>`.

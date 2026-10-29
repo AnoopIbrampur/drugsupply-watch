@@ -84,3 +84,21 @@ def test_diluent_words_kept_when_they_are_the_drug():
 
     assert approx_family_key("Dextrose Monohydrate 5% Injection").startswith("dextrose")
     assert "water" in approx_family_key("Sterile Water for Injection")
+
+
+def test_capture_gap_does_not_split_a_continuous_episode():
+    """Current right before and right after a 100-day hole with no captures is
+    one episode: we never observed it absent."""
+    ts = weekly(4) + weekly(4, start="2020-05-08")  # ~100 days without captures
+    rows = [(t, "Drug C Injection", "Current") for t in ts]
+    ep = build_episodes(frame(rows))
+    assert len(ep) == 1
+    assert ep.iloc[0].end == pd.Timestamp(ts[-1][:8])
+
+
+def test_observed_absence_still_splits_after_capture_gap():
+    ts = weekly(4) + weekly(16, start="2020-05-08")
+    rows = [(t, "Filler", "Current") for t in ts]
+    rows += [(t, "Drug D Tablet", "Current") for t in ts[:4] + ts[-2:]]  # 14 weeks seen absent
+    ep = build_episodes(frame(rows))
+    assert (ep.key == "drug d tablet").sum() == 2

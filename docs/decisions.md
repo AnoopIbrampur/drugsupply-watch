@@ -78,6 +78,11 @@ Choices and tradeoffs:
    longer than 3 weeks are dropped from evaluation, because their label is unknown.
 5. **Exclude rows during an episode.** Otherwise the model learns "it is in
    shortage now", which is useless for early warning and inflates metrics.
+   **Point-in-time rule:** whether row *t* is excluded must depend only on
+   whether the family is listed as Current *in the capture at t*, not on the
+   merged episode span. The 8-week merge looks ahead (a reappearance decides
+   that the weeks in between were "in episode"), so it may only shape labels,
+   never row selection or features.
 
 ## D5. Mapping archived listing names to families — PROPOSED
 

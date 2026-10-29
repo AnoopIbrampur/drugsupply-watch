@@ -114,13 +114,23 @@ def build_episodes(
     prev_capture = dict(zip(captures[1:], captures[:-1], strict=True))
     last_capture = captures[-1]
 
+    # Absence is measured in *observed* time: each step between consecutive
+    # captures counts at most max_capture_gap_days. Without this, a drug that
+    # is Current on both sides of a long capture gap (e.g. 2024-09 -> 2025-09)
+    # would be split into two episodes, the second a fake "new" start.
+    steps = [0.0] + [
+        min((b - a).days, max_capture_gap_days)
+        for a, b in zip(captures[:-1], captures[1:], strict=True)
+    ]
+    observed_clock = dict(zip(captures, pd.Series(steps).cumsum(), strict=True))
+
     current = df[df["status"] == "Current"].drop_duplicates(["key", "date"])
     episodes = []
     for key, grp in current.groupby("key"):
         dates = sorted(grp["date"])
         start = end = dates[0]
         for d in dates[1:]:
-            if (d - end).days <= merge_gap_days:
+            if observed_clock[d] - observed_clock[end] <= merge_gap_days:
                 end = d
                 continue
             episodes.append(_episode(key, start, end, prev_capture, max_capture_gap_days))

@@ -40,24 +40,33 @@ logged here).
   downloaded and parsed (118–575 listing rows each, no parse failures).
 - Every listing has a name and a status code (c/r/d) in its detail-page link.
   The 2014 and 2026 page layouts both parse with the same regex.
-- **Validation:** the 5 shortages openFDA lists as Current with 2026 posting
-  dates (furosemide oral solution, isocarboxazid tablet, ifosfamide injection,
-  pentostatin injection, dextrose 5% injection) are each picked up by the archive
-  3–6 days after FDA's `initial_posting_date`. That lag equals our weekly capture
-  spacing, which suggests archive start dates are trustworthy and point-in-time safe.
+- **Validation:** openFDA lists 5 Current shortages with 2026 posting dates.
+  - **4 of 5** (furosemide oral solution, isocarboxazid tablet, ifosfamide
+    injection, pentostatin injection) appear in the archive as new episodes
+    3–6 days after FDA's `initial_posting_date`. That lag equals our weekly
+    capture spacing, which suggests archive start dates are trustworthy and
+    point-in-time safe.
+  - The 5th (dextrose 5% injection, posted 2026-07-20 for Baxter) is a new
+    package added to a dextrose shortage listed since 2022. So it is not a new
+    family episode. Note that `initial_posting_date` is per package, not per
+    shortage.
 
-Episodes (prototype in `transform/shortage_episodes.py`; key = approximate
-ingredient + form group; flicker under 8 weeks merged):
+Episodes (prototype in `transform/shortage_episodes.py`):
+- The key is an approximate ingredient + form group.
+- Observed absences under 8 weeks are merged.
+- Absence is measured only across captures that exist. A drug that is Current
+  on both sides of a capture gap counts as one continuous episode.
 
 | | |
 |---|---|
 | Distinct listing names, 2014–2026 | 2,090 (1,427 approximate family keys) |
-| Episodes | 886 |
+| Episodes | 537 |
 | …with an observed start (not censored) | **350**, across 317 families |
 | …left-censored at first capture (2014-06) | 74 |
-| …censored by a capture gap > 21 days | 462 (2014: 99, 2018: 122, 2019: 142, 2025: 74, other years ≤ 12) |
-| Duration (first to last capture as Current) | median 259 days, p90 1,111 days |
+| …started during a capture gap > 21 days (start known only to within the gap) | 113 (2014: 30, 2019: 36, 2018: 19, 2015: 12, 2025: 6, other years ≤ 5) |
+| Duration (first to last capture as Current) | median 504 days, p90 ~1,770 days |
 | Starts that recur in a family with an earlier episode | 19% |
+| Status codes seen | only c / r / d in every year (no unparsed codes) |
 
 Uncensored new starts per year (8-week merge; 4- and 26-week merges change
 these by at most 3):
@@ -78,15 +87,20 @@ these by at most 3):
    most of them. The remaining ~42 are salt and hydrate wording ("Lidocaine HCl
    Anhydrous" vs "Lidocaine HCl"), which the proper UNII/moiety key (D3) should
    remove.
-2. **New shortages have become rare.** openFDA shows only 4 (2024), 3 (2025)
-   and 5 (2026) new Current shortages by posting date. The archive agrees for
-   2024 and 2026.
+2. **Few dated new starts after 2023.** The archive finds 8 (2024) and 5
+   (2026, to October); 2025 can't be dated because of the capture gap. openFDA
+   posting dates (4 / 3 / 5) are consistent with this, but they count only
+   shortages still listed today, so they are a floor and not a comparison. The
+   distinct Current names per year also fell (2022: 170, 2024: 133, 2026: 80).
+   Not yet cross-checked against FDA's annual shortage reports to Congress.
 3. 2018–2019 captures are sparse (72–87% weekly coverage), so many starts from
    those years are censored.
 
-**Verdict:** labels exist for **about 350 dated episode starts (2014–2026)**, plus
-about 460 starts known only to within a gap window. That is enough for a careful
-walk-forward backtest, not for a data-hungry model.
+**Verdict:** labels exist for **about 350 dated episode starts (2014–2026)**,
+plus 113 starts known only to within a capture-gap window. Most dated starts
+are in 2016–2023, which is where a walk-forward backtest can be evaluated.
+That is enough for a careful backtest of a simple model, not for a
+data-hungry one.
 
 ## 5b. Mapping shortage records to drug families
 
@@ -165,8 +179,10 @@ data keyed by FEI. Route 1 is a fallback at about 44% coverage.
   - Random precision@k is about 0.25% for any k.
   - **Ceiling** precision@k (all ~10 positives ranked top): k=25 → 39%, k=50 →
     19%, k=100 → 10%. In 2024–2026 the ceilings are 3–4× lower.
-  - So the Berkeley project's ~0.1% precision is roughly what a *random* list
-    achieves at this base rate.
+  - For context: the Berkeley project reported ~0.1% precision after
+    calibration on a 4-week horizon. We don't know their family universe or
+    exact precision definition, but that is the same order of magnitude as a
+    random list at a base rate like ours (scaled to 4 weeks, about 0.08%).
 
 **Implications:**
 1. Headline metrics should be **recall@k and lift over random**, with precision@k
