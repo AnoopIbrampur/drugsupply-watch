@@ -19,7 +19,6 @@ rxradar = "rxradar.cli:main"
 dev = [
     "pytest>=8",
     "ruff>=0.6",
-    "respx>=0.21",
 ]
 
 [build-system]

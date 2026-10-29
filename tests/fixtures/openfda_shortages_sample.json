@@ -1,0 +1,121 @@
+{
+ "meta": {
+  "disclaimer": "Do not rely on openFDA to make decisions regarding medical care. While we make every effort to ensure that data is accurate, you should assume all results are unvalidated. We may limit or otherwise restrict your access to the API in line with our Terms of Service.",
+  "terms": "https://open.fda.gov/terms/",
+  "license": "https://open.fda.gov/license/",
+  "last_updated": "2026-10-29",
+  "results": {
+   "skip": 0,
+   "limit": 1604,
+   "total": 1604
+  }
+ },
+ "results": [
+  {
+   "update_type": "Revised",
+   "initial_posting_date": "03/25/2020",
+   "change_date": "08/06/2026",
+   "package_ndc": "0088-2102-24",
+   "generic_name": "Rifapentine Tablet, Film Coated",
+   "contact_info": "800-633-1610 Option 7",
+   "resolved_note": "Available",
+   "openfda": {
+    "application_number": [
+     "NDA021024"
+    ],
+    "brand_name": [
+     "PRIFTIN"
+    ],
+    "generic_name": [
+     "RIFAPENTINE"
+    ],
+    "manufacturer_name": [
+     "sanofi-aventis U.S. LLC"
+    ],
+    "product_ndc": [
+     "0088-2102"
+    ],
+    "product_type": [
+     "HUMAN PRESCRIPTION DRUG"
+    ],
+    "route": [
+     "ORAL"
+    ],
+    "substance_name": [
+     "RIFAPENTINE"
+    ],
+    "rxcui": [
+     "242671",
+     "261101"
+    ],
+    "spl_id": [
+     "83c11919-ca6d-49f5-8f9f-7b8405fcbaec"
+    ],
+    "spl_set_id": [
+     "3a64fb70-b85e-43d9-8bcd-7e893f568ae1"
+    ],
+    "package_ndc": [
+     "0088-2102-01",
+     "0088-2102-24"
+    ],
+    "nui": [
+     "N0000175501",
+     "M0019113"
+    ],
+    "pharm_class_epc": [
+     "Rifamycin Antimycobacterial [EPC]"
+    ],
+    "pharm_class_cs": [
+     "Rifamycins [CS]"
+    ],
+    "unii": [
+     "XJM390A33U"
+    ]
+   },
+   "update_date": "08/06/2026",
+   "therapeutic_category": [
+    "Anti-Infective"
+   ],
+   "dosage_form": "Tablet",
+   "presentation": "Priftin, Tablet, Film Coated, 150 mg (NDC 0088-2102-24)",
+   "company_name": "Sanofi-Aventis U.S. LLC",
+   "status": "Resolved"
+  },
+  {
+   "update_type": "Revised",
+   "initial_posting_date": "02/22/2012",
+   "package_ndc": "0409-4713-32",
+   "generic_name": "Lidocaine Hydrochloride Injection",
+   "contact_info": "844-646-4398",
+   "availability": "Unavailable",
+   "related_info": "Next Delivery and Estimated Recovery: March 2027; Shortage per Manufacturer: Manufacturing Delay",
+   "update_date": "10/21/2026",
+   "therapeutic_category": [
+    "Anesthesia",
+    "Pediatric"
+   ],
+   "dosage_form": "Injection",
+   "presentation": "Lidocaine Hydrochloride Preservative Free, Injection, 20 mg/2 mL (1%; 10 mg/mL) (NDC 0409-4713-32)",
+   "company_name": "Hospira, Inc., a Pfizer Company",
+   "shortage_reason": "Other",
+   "status": "Current"
+  },
+  {
+   "discontinued_date": "02/25/2026",
+   "update_type": "New",
+   "initial_posting_date": "02/25/2026",
+   "package_ndc": "0009-0395-14",
+   "generic_name": "Clindamycin Hydrochloride Capsule",
+   "contact_info": "844-646-4398",
+   "related_info": "Discontinuation of the manufacture of the drug",
+   "update_date": "02/25/2026",
+   "therapeutic_category": [
+    "Anti-Infective"
+   ],
+   "dosage_form": "Capsule",
+   "presentation": "Cleocin Hydrochloride, Capsule, 300 mg (NDC 0009-0395-14)",
+   "company_name": "Pfizer Inc.",
+   "status": "To Be Discontinued"
+  }
+ ]
+}
