@@ -36,3 +36,10 @@ def latest_snapshot_dir(source: str) -> Path | None:
 
 def cache_dir() -> Path:
     return data_root() / "cache"
+
+
+def derived_dir() -> Path:
+    """Tables we compute from raw snapshots (rebuildable, never hand-edited)."""
+    path = data_root() / "derived"
+    path.mkdir(parents=True, exist_ok=True)
+    return path

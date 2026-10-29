@@ -71,3 +71,36 @@ def test_product_families_end_to_end():
     assert fam[0] == fam[1] == "5SL0G7R0OK|INJECTION|PARENTERAL"
     assert fam[2] == "5SL0G7R0OK|TABLET|ORAL"
     assert pd.isna(fam[3])  # no ingredients -> no family
+
+
+def test_drugsfda_spellings():
+    assert form_group("INJECTABLE") == "INJECTION"
+    assert form_group("CAPSULE, DELAYED REL PELLETS") == "CAPSULE_DR"
+    assert route_group("ORAL-28", "TABLET") == "ORAL"
+    assert route_group("INJECTION", "INJECTION") == "PARENTERAL"
+
+
+def test_delisted_products_resolve_through_application():
+    from rxradar.transform.families import resolve_delisted
+
+    app_fams = pd.DataFrame(
+        {
+            "APPLICATIONNUMBER": ["ANDA1", "NDA2", "NDA2", "NDA3", "NDA3"],
+            "brand": ["X", "ORALBRAND", "SOLBRAND", "SAME", "SAME"],
+            "family": ["F|TABLET|ORAL", "G|TABLET|ORAL", "G|LIQUID|ORAL", "H|A|B", "H|C|D"],
+        }
+    )
+    exc = pd.DataFrame(
+        {
+            "APPLICATIONNUMBER": ["ANDA1", "NDA2", "NDA3", "ANDA9"],
+            "PROPRIETARYNAME": ["anything", "SolBrand", "Same", "x"],
+        }
+    )
+    out = resolve_delisted(exc, app_fams)
+    assert out.family.tolist()[:2] == ["F|TABLET|ORAL", "G|LIQUID|ORAL"]
+    assert out.family_source.tolist() == [
+        "drugsfda",
+        "drugsfda_brand",
+        "ambiguous_application",
+        "no_drugsfda_match",
+    ]

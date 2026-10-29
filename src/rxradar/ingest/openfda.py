@@ -30,6 +30,9 @@ DATASETS = {
     "shortages": ("drug", "openfda_shortages"),
     "ndc": ("drug", "openfda_ndc"),
     "enforcement": ("drug", "openfda_enforcement"),
+    # Drugs@FDA: ingredients/form/route per approved application, including
+    # discontinued products. The only source of ingredients for delisted NDCs.
+    "drugsfda": ("drug", "openfda_drugsfda"),
 }
 # Large, slow-changing reference data, fetched on demand rather than nightly.
 # The substance file (GSRS) links salts and hydrates to their active moiety,
