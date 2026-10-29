@@ -45,8 +45,14 @@ def ingest(source: str) -> None:
         from rxradar.ingest import nadac
 
         nadac.ingest(_openfda_client())
-    # FDA Data Dashboard inspections are not ingested: they need an API
-    # credential (see docs/data_audit.md).
+    if source in ("all", "dashboard"):
+        from rxradar.ingest import fda_dashboard
+
+        try:
+            fda_dashboard.ingest()
+        except fda_dashboard.MissingCredentials as exc:
+            # Not fatal for "all": every other source still updates.
+            logging.getLogger(__name__).warning("skipping FDA Data Dashboard: %s", exc)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -55,7 +61,16 @@ def main(argv: list[str] | None = None) -> None:
     p_ingest = sub.add_parser("ingest", help="download raw snapshots")
     p_ingest.add_argument(
         "source",
-        choices=["all", "openfda", "substance", "archive", "registry", "warning_letters", "nadac"],
+        choices=[
+            "all",
+            "openfda",
+            "substance",
+            "archive",
+            "registry",
+            "warning_letters",
+            "nadac",
+            "dashboard",
+        ],
     )
     args = parser.parse_args(argv)
     logging.basicConfig(
