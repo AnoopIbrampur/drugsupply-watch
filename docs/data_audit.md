@@ -1,0 +1,228 @@
+# Phase 1 data audit
+
+*Snapshot date: 2026-10-29. Every number here was produced by code in this repo
+(`scripts/audit_*.py`, `src/rxradar/ingest/*`) against raw snapshots in
+`data/raw/<source>/2026-10-29/`. Re-run with `make ingest`, then the scripts.*
+
+## Source status at a glance
+
+| Source | Access | History | Key identifiers | Status |
+|---|---|---|---|---|
+| openFDA drug shortages | Bulk zip (0.4 MB), no key needed | **Current state only** (1,604 records) | package NDC, generic name, openfda UNII/route/spl_set_id | ✅ ingested |
+| FDA shortage list page, archived by Wayback Machine | CDX API + `id_` raw captures | 2014-06-22 → 2026-10-24, about daily, 462 weekly captures used | Listing name (= openFDA `generic_name`), status | ✅ ingested (label source, see D2) |
+| openFDA NDC directory | Bulk zip (26 MB) | Current listings only | product/package NDC, labeler, UNII | ✅ ingested |
+| FDA NDC text files incl. `ndc_excluded.zip` | Bulk zips on accessdata.fda.gov | **207k delisted products with start/end marketing dates** | product NDC, labeler name | ✅ ingested |
+| FDA establishment registrations (DECRS, `drls_reg`/`drls_excluded`) | Bulk zips | Current plus excluded registrations | **FEI, DUNS**, firm name, address, operations | ✅ ingested |
+| openFDA drug enforcement (recalls) | Bulk zip (3.8 MB) | report_date 2012-06 → 2026-10 (18,048 recalls) | recalling firm, free-text product, 17% have NDC block | ✅ ingested |
+| FDA warning letters (fda.gov table export) | xlsx export | **Capped at 1,000 rows** (letters posted ~2021–2026) | company name only, no FEI | ⚠️ partial |
+| FDA Data Dashboard inspections / compliance actions | Qlik JS export or API with credentials | unknown (not verified; needs access) | FEI, legal name, classification NAI/VAI/OAI (per dashboard page) | ❌ blocked: needs owner action (§5e) |
+| Medicaid NADAC | data.medicaid.gov yearly CSVs + DKAN query API | 2013-11-28 → 2026-10-28, weekly | 11-digit NDC | ✅ fetcher works; full download slow (§5e) |
+| DailyMed SPL (NLM) | REST API per set id | Current label version | establishment DUNS + operations | 🔍 probed only (§5c) |
+
+---
+
+## 5a. Do we have labels? (Resolved/historical shortages)
+
+**openFDA alone: no.** The shortage endpoint holds 1,604 package-level records:
+1,142 *Current*, 443 *To Be Discontinued*, and only **19 *Resolved***. At
+ingredient level that is 233 generic names (69 current, 170 discontinued, 5
+resolved). Resolved shortages drop off after a short time. `initial_posting_date`
+goes back to 2012, but only for shortages that are *still* listed, which makes it a
+survivor sample: no records start in 2013–2014, and 2024 has only 11.
+
+FDA's own shortage page shows the same set. It links a
+`shortages_current_and_historical.xlsx`, which **returns HTTP 404** (surprise,
+logged here).
+
+**Workaround that works: Wayback Machine captures of FDA's list page.**
+- The CDX index has 1,435 daily captures (HTTP 200) from 2014-06-22 to
+  2026-10-24. We take the first capture of each ISO week, 462 in total; 461
+  downloaded and parsed (118–575 listing rows each, no parse failures).
+- Every listing has a name and a status code (c/r/d) in its detail-page link.
+  The 2014 and 2026 page layouts both parse with the same regex.
+- **Validation:** the 5 shortages openFDA lists as Current with 2026 posting
+  dates (furosemide oral solution, isocarboxazid tablet, ifosfamide injection,
+  pentostatin injection, dextrose 5% injection) are each picked up by the archive
+  3–6 days after FDA's `initial_posting_date`. That lag equals our weekly capture
+  spacing, which suggests archive start dates are trustworthy and point-in-time safe.
+
+Episodes (prototype in `transform/shortage_episodes.py`; key = approximate
+ingredient + form group; flicker under 8 weeks merged):
+
+| | |
+|---|---|
+| Distinct listing names, 2014–2026 | 2,090 (1,427 approximate family keys) |
+| Episodes | 886 |
+| …with an observed start (not censored) | **350**, across 317 families |
+| …left-censored at first capture (2014-06) | 74 |
+| …censored by a capture gap > 21 days | 462 (2014: 99, 2018: 122, 2019: 142, 2025: 74, other years ≤ 12) |
+| Duration (first to last capture as Current) | median 259 days, p90 1,111 days |
+| Starts that recur in a family with an earlier episode | 19% |
+
+Uncensored new starts per year (8-week merge; 4- and 26-week merges change
+these by at most 3):
+
+| 2014* | 2015 | 2016 | 2017 | 2018 | 2019 | 2020 | 2021 | 2022 | 2023 | 2024 | 2025 | 2026** |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 5 | 18 | 20 | 38 | 35 | 11 | 46 | 40 | 46 | 78† | 8 | 0‡ | 5 |
+
+\* from June. \*\* to October. † includes ~42 artifacts from FDA's renaming
+(below). ‡ the archive has a 364-day gap from 2024-09-06 to 2025-09-05, so no
+2025 start can be dated.
+
+**Surprises logged:**
+1. **FDA renamed its listings on 2023-09-18**, switching to SPL-style names
+   ("Amifostine Injection" became "Amifostine Injection, Powder, Lyophilized, For
+   Solution"). In one week, 134 names appeared and 99 disappeared. Keyed by raw
+   name this produced 129 fake new episodes. The approximate family key removes
+   most of them. The remaining ~42 are salt and hydrate wording ("Lidocaine HCl
+   Anhydrous" vs "Lidocaine HCl"), which the proper UNII/moiety key (D3) should
+   remove.
+2. **New shortages have become rare.** openFDA shows only 4 (2024), 3 (2025)
+   and 5 (2026) new Current shortages by posting date. The archive agrees for
+   2024 and 2026.
+3. 2018–2019 captures are sparse (72–87% weekly coverage), so many starts from
+   those years are censored.
+
+**Verdict:** labels exist for **about 350 dated episode starts (2014–2026)**, plus
+about 460 starts known only to within a gap window. That is enough for a careful
+walk-forward backtest, not for a data-hungry model.
+
+## 5b. Mapping shortage records to drug families
+
+openFDA shortage field coverage (n = 1,604): `generic_name`, `package_ndc`,
+`presentation`, `company_name`, `initial_posting_date` 100%; `dosage_form`
+99.4%; `openfda.{product_ndc, substance_name, route, unii}` about 80%;
+`shortage_reason` 25%; `discontinued_date` 28%.
+
+- Records **with** an `openfda` block (80%) map straight to UNII + route.
+- For the other 20% (n = 320), joining `package_ndc` to the NDC text files
+  (current **plus** excluded) finds the product for 96%. 149 of those hits come
+  from the *excluded* file, so delisted products matter.
+- **Overall, 99.3% of openFDA shortage records map to an NDC product
+  automatically.** The 12 misses are mostly non-standard NDC formats (e.g.
+  `39822-0355-6`) and could be fixed with normalization.
+- **Archived listings have no NDC**, only names. FDA's list name equals the
+  openFDA `generic_name` (e.g. "Bupivacaine Hydrochloride Injection"), so
+  current names map exactly. Older names need parsing (decisions D5). Not yet
+  measured: the share of the 2,090 historical names that map automatically.
+  That is the first Phase 2 task.
+
+Example record (abridged):
+```json
+{"generic_name": "Dextrose Monohydrate 5% Injection", "status": "Current",
+ "initial_posting_date": "02/14/2022", "package_ndc": "0264-1510-32",
+ "dosage_form": "Injection", "company_name": "B. Braun Medical Inc.",
+ "openfda": {"unii": ["LX22YL083G"], "route": ["INTRAVENOUS"],
+             "substance_name": ["DEXTROSE MONOHYDRATE"], "spl_set_id": ["60b6d7c3-…"]}}
+```
+
+## 5c. Linking NDC labelers to inspection records
+
+Inspections are keyed by **FEI** (one per facility). NDC records name a
+**labeler**, which is often not the manufacturer. We tested two routes on
+shortage products (`scripts/audit_labeler_fei.py`, `scripts/audit_spl_establishments.py`).
+
+**Route 1: labeler name → registration firm/registrant name → FEI.**
+Sample: 50 of the 165 labelers of shortage NDCs (seed 7).
+- Normalized exact match: **44%** (22/50). Matching only the first token raises
+  this to 66% but is ambiguous (e.g. "AMNEAL" matches 15 FEIs).
+- Failure cases (28):
+  - **Virtual or contract labelers that don't make the drug and don't register
+    a plant:** Avenacy, BluePoint Laboratories, Civica, Meitheal, Solco
+    Healthcare (×2 spellings), XGen DJB, Armas, Ingenus, Wilshire, Vertical,
+    Woodward, Oryza, Journey Medical, Medexus, Cumberland, Epizyme.
+  - **Subsidiary or naming mismatch:** Amneal Pharmaceuticals NY, Viatris
+    Specialty, Eugia US, Fosun Pharma USA (×2), Horizon Therapeutics USA, Ipsen
+    Biopharmaceuticals, Chartwell RX, Esteve S.A., Alvogen, Upsher-Smith.
+- Even a match is weak evidence: "Eli Lilly and Company" matches 10 FEIs, and
+  the labeler's own plants may not make *this* product.
+
+**Route 2 (better): product label (SPL) establishment section → DUNS → FEI.**
+SPLs on DailyMed list the establishments that manufacture each product (DUNS +
+operation). Example: Meitheal's azacitidine injection SPL names **Kindos
+Pharmaceuticals** (DUNS 529111185) as manufacturer.
+- In a sample of 30 shortage SPLs, **63% list ≥ 1 establishment**, and **27 of
+  29 establishment DUNS (93%) resolve to an FEI** via DECRS. So 57% of products
+  get an FEI-linked manufacturer.
+- The other 37% have no establishment section (older or compact labels).
+- **Point-in-time caveat:** DailyMed serves the *current* label. Past
+  manufacturers need SPL version history (DailyMed keeps older versions;
+  feasibility not yet tested).
+
+**Verdict:** a reliable labeler→inspection link needs Route 2 plus inspection
+data keyed by FEI. Route 1 is a fallback at about 44% coverage.
+
+## 5d. Base rate and what it means for precision@k
+
+- **Candidate families:** 3,947 current Rx (ingredient + coarse form + route)
+  families; 2,068 of them have a generic (ANDA) product; 46% are single-source.
+- **New shortages per 90 days:** in the 26 of 47 quarters that captures fully
+  cover, a mean of 9.7 and a median of 8 uncensored starts (range 0–46; the 46
+  is the 2023-09 rename artifact). Recent years are lower (~1–3 per quarter in
+  2024–2026).
+- **Base rate per family per 90 days ≈ 0.25%** (roughly 1 in 400).
+  - Random precision@k is about 0.25% for any k.
+  - **Ceiling** precision@k (all ~10 positives ranked top): k=25 → 39%, k=50 →
+    19%, k=100 → 10%. In 2024–2026 the ceilings are 3–4× lower.
+  - So the Berkeley project's ~0.1% precision is roughly what a *random* list
+    achieves at this base rate.
+
+**Implications:**
+1. Headline metrics should be **recall@k and lift over random**, with precision@k
+   reported against its ceiling. With ~10 positives per quarter, per-quarter
+   precision is very noisy, so we should pool over the backtest and use
+   bootstrap CIs.
+2. We should consider restricting the universe to **multi-source generics and
+   sterile injectables**, where most shortages occur. That raises the base rate
+   without hiding anything, as long as the restriction is stated.
+3. The falling recent rate means a model trained on 2017–2023 will be
+   miscalibrated for 2025+. Calibration needs time-aware recalibration.
+
+## 5e. Unavailable, rate-limited or unusable sources, and workarounds
+
+1. **FDA "current and historical" shortage xlsx: 404.** Replaced by Wayback
+   captures (§5a). From now on our own daily snapshots remove that dependency.
+2. **Wayback capture gaps:** 2024-09-06 → 2025-09-05 (364 days), plus 22
+   other gaps longer than 3 weeks (up to 117 days) in 2014–2016 and 2018–2021. Possible fixes:
+   (a) query alternate URL forms (`drugshortages/`, `Drugshortages.cfm`, `http://`)
+   in the CDX index; (b) date episodes from the openFDA `initial_posting_date`
+   when the episode is still listed; (c) archived per-drug detail pages may show a posting date that
+   fills gaps (unverified). None of these has been tried yet.
+3. **FDA Data Dashboard (inspections, citations, compliance actions):** the
+   "Entire Dataset" links (`InspectionsDataset.xlsx`) return 404 when fetched
+   directly. The real export runs inside a Qlik JavaScript app. The REST API
+   needs an Authorization-User/Key pair issued through FDA's **OII Unified
+   Logon** account. That is free, but it means *creating an account*, which the
+   project owner must do. Options:
+   - **(a, recommended)** The owner requests a free API key; we store it as
+     `FDA_DD_USER` / `FDA_DD_KEY` env vars and in GitHub Actions secrets.
+   - (b) The owner downloads "Entire Inspections Dataset" by hand once from the
+     dashboard, and we ingest that file. This doesn't work for nightly updates.
+   - (c) Use Wayback captures of the dashboard export: checked, and all captures
+     are 404 or empty. Not viable.
+4. **Warning letters:** the fda.gov table's xlsx export ignores `page`, date
+   and office filters and always returns the same 1,000 rows (posted dates
+   2021-03 → 2026-04; most are tobacco/food). No FEI. Workarounds: the Data
+   Dashboard *compliance actions* dataset (FEI-keyed, needs the same key as
+   item 3), or snapshot the export daily from now on (implemented).
+5. **NADAC:** bulk download speed is about 170 KB/s, and each yearly CSV is
+   ~100–200 MB (2013 file: 9.6 MB for 5 weeks), so the full history takes hours.
+   The fetcher skips past years already downloaded, so the job resumes. The
+   DKAN query API is fast for filtered pulls. **Coverage problem:** in the
+   latest NADAC week (30,167 NDCs), only **37% of the 233 current shortage
+   families have any priced NDC, and only 24% of injectable shortage families**
+   (n=110), versus 61% of tablet families. NADAC surveys retail pharmacies, so
+   price erosion is a usable signal for oral generics but mostly missing for
+   hospital injectables.
+6. **Recalls (openFDA enforcement):** use `report_date` (when it was published),
+   not `recall_initiation_date`. The median lag between them is 47 days, so
+   using initiation date would leak. Only 17% of recalls carry an openFDA NDC
+   block; the rest need NDC parsing from `product_description` / `code_info`.
+7. **NDC history:** `ndc_excluded` gives start and end marketing dates, but
+   these are self-reported, may be backfilled, and products purged before the
+   file existed are missing. Manufacturer counts for early years will therefore
+   be undercounts. This needs a sensitivity check in Phase 2.
+8. **openFDA API date-range queries:** an `initial_posting_date:[… TO …]`
+   search failed in testing. That was a curl globbing mistake (`[` needs `-g`),
+   not an API problem. Dates in this endpoint are `MM/DD/YYYY` strings.
