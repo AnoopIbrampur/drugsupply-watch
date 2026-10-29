@@ -72,12 +72,17 @@ def main(argv: list[str] | None = None) -> None:
             "dashboard",
         ],
     )
+    sub.add_parser("build", help="rebuild derived tables (families, labels, panel)")
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=os.environ.get("LOG_LEVEL", "INFO"), format="%(asctime)s %(name)s %(message)s"
     )
     if args.cmd == "ingest":
         ingest(args.source)
+    elif args.cmd == "build":
+        from rxradar.transform.build import build_all
+
+        build_all()
 
 
 if __name__ == "__main__":
