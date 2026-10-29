@@ -266,8 +266,8 @@ and `scripts/audit_phase2.py`.
   active moiety through 32.6k GSRS ACTIVE MOIETY links. 99.9% of current Rx NDC products
   resolve every ingredient.
 - Dosage forms map through a reviewed crosswalk:
-  `src/rxradar/transform/data/dosage_form_groups.csv`, 150 NDC and Drugs@FDA
-  spellings mapped into 27 groups.
+  `src/rxradar/transform/data/dosage_form_groups.csv`, 149 NDC and Drugs@FDA
+  spellings mapped into 29 groups.
 - **Delisted products:** 85,235 delisted Rx products (ANDA/NDA/BLA) get a family through
   their application number in Drugs@FDA.
   - 91.6% resolve overall: ANDA 98.3%, NDA 94.8%, authorized generics 98.3%, BLA 6.7%.
