@@ -110,7 +110,11 @@ def build_episodes(
     df = listings.copy()
     df["date"] = pd.to_datetime(df["capture_ts"].str[:8], format="%Y%m%d")
     df["key"] = df["name"].map(key_fn)
-    captures = sorted(df["date"].unique())
+    # Captures stay in the calendar (for gap and censoring logic) even when
+    # their names don't map; unmapped names just can't form episodes.
+    captures_only = df[["date"]].drop_duplicates()
+    df = df.dropna(subset=["key"])
+    captures = sorted(captures_only["date"].unique())
     prev_capture = dict(zip(captures[1:], captures[:-1], strict=True))
     last_capture = captures[-1]
 
