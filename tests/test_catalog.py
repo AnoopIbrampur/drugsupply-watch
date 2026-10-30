@@ -39,3 +39,11 @@ def test_alternatives_only_same_ingredient():
     assert alt[INJ]["labelers"] == ["A", "B"]
     assert alt[INJ]["other_forms"] == [{"family": TAB, "name": "tab", "n_labelers": 1}]
     assert alt[OTHER]["other_forms"] == []
+
+
+def test_fda_percent_encoding_is_restored():
+    from rxradar.site.catalog import clean_fda_name
+
+    assert clean_fda_name("Sodium Chloride 0.9per Injection") == "Sodium Chloride 0.9% Injection"
+    assert clean_fda_name("Nitroglycerin in 5chr(37) Dextrose") == "Nitroglycerin in 5% Dextrose"
+    assert clean_fda_name("Peroxide Superior") == "Peroxide Superior"  # 'per' inside words stays

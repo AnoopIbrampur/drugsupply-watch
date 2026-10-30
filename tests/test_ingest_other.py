@@ -98,3 +98,18 @@ def test_warning_letters_saves_xlsx():
     client = make_client(lambda req: httpx.Response(200, content=b"PK\x03\x04fake"))
     out = warning_letters.ingest(client)
     assert (out / "warning_letters.xlsx").read_bytes().startswith(b"PK")
+
+
+def test_cli_accepts_every_ingest_source():
+    """Guards against the choices list drifting from the ingest() branches."""
+    import inspect
+
+    from rxradar import cli
+
+    src = inspect.getsource(cli.ingest)
+    for name in ("openfda", "substance", "page", "archive", "ndc_archive", "registry",
+                 "warning_letters", "nadac", "dashboard"):  # fmt: skip
+        assert f'"{name}"' in src
+    parser_src = inspect.getsource(cli.main)
+    for name in ("page", "ndc_archive", "dashboard"):
+        assert f'"{name}"' in parser_src

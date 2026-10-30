@@ -15,11 +15,11 @@ import pandas as pd
 
 from rxradar.features.common import NS
 from rxradar.features.history import listings_source
-from rxradar.paths import derived_dir, latest_snapshot_dir
+from rxradar.paths import derived_dir
 
 
 def load_listings() -> pd.DataFrame:
-    lst = pd.read_parquet(latest_snapshot_dir("fda_shortage_archive") / "_listings.parquet")
+    lst = pd.read_parquet(derived_dir() / "listings.parquet")
     names = pd.read_parquet(derived_dir() / "listing_name_families.parquet")
     return listings_source(lst, dict(zip(names.name, names.family, strict=True)))
 

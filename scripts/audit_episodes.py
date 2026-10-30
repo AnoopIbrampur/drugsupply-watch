@@ -3,11 +3,11 @@
 import pandas as pd
 
 from rxradar.ingest.fda_shortage_archive import load_listings
-from rxradar.paths import latest_snapshot_dir
+from rxradar.paths import derived_dir, latest_snapshot_dir
 from rxradar.transform.shortage_episodes import approx_family_key, build_episodes, normalize_name
 
 lst = pd.DataFrame(load_listings(latest_snapshot_dir("fda_shortage_archive")))
-lst.to_parquet(latest_snapshot_dir("fda_shortage_archive") / "_listings.parquet")
+lst.to_parquet(derived_dir() / "listings.parquet")
 dates = pd.to_datetime(lst.capture_ts.str[:8])
 print(
     f"captures parsed: {lst.capture_ts.nunique()}  ({dates.min().date()} .. {dates.max().date()})"

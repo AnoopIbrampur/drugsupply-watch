@@ -13,7 +13,7 @@ resolver = MoietyResolver(*load_tables(latest_snapshot_dir("openfda_substance"))
 names = openfda_name_families(load_results(latest_snapshot_dir("openfda_shortages")), prod)
 mapper = ListingNameMapper(resolver, prod.family.dropna().unique().tolist(), names)
 
-lst = pd.read_parquet(latest_snapshot_dir("fda_shortage_archive") / "_listings.parquet")
+lst = pd.read_parquet(derived_dir() / "listings.parquet")
 cur = lst[lst.status == "Current"]
 uniq = pd.DataFrame({"name": lst.name.unique()})
 res = uniq.name.map(mapper.map)

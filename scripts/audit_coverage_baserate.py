@@ -12,11 +12,11 @@ import pandas as pd
 
 from rxradar.ingest.fda_registry import read_tsv
 from rxradar.ingest.openfda import load_results
-from rxradar.paths import latest_snapshot_dir
+from rxradar.paths import derived_dir, latest_snapshot_dir
 from rxradar.transform.shortage_episodes import approx_family_key, build_episodes, form_group
 
 arch = latest_snapshot_dir("fda_shortage_archive")
-lst = pd.read_parquet(arch / "_listings.parquet")
+lst = pd.read_parquet(derived_dir() / "listings.parquet")
 ep = build_episodes(lst, merge_gap_days=56, key_fn=approx_family_key)
 clean = ep[~ep.start_censored]
 caps = pd.Series(sorted(pd.to_datetime(lst.capture_ts.str[:8].unique())))

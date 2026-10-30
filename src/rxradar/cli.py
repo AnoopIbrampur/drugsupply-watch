@@ -31,6 +31,10 @@ def ingest(source: str) -> None:
             openfda.ingest_dataset(client, dataset)
     if source == "substance":  # reference data, not part of "all"
         openfda.ingest_dataset(_openfda_client(), "substance")
+    if source in ("all", "page"):
+        from rxradar.ingest import fda_shortage_page
+
+        fda_shortage_page.ingest(_openfda_client())
     if source in ("all", "archive"):
         fda_shortage_archive.ingest(_archive_client())
     if source in ("all", "ndc_archive"):
@@ -69,7 +73,9 @@ def main(argv: list[str] | None = None) -> None:
             "all",
             "openfda",
             "substance",
+            "page",
             "archive",
+            "ndc_archive",
             "registry",
             "warning_letters",
             "nadac",
@@ -77,6 +83,9 @@ def main(argv: list[str] | None = None) -> None:
         ],
     )
     sub.add_parser("build", help="rebuild derived tables (families, labels, panel)")
+    sub.add_parser("train", help="fit the production model (data/derived/model.json)")
+    sub.add_parser("score", help="score the latest week (data/site_data/scores.json)")
+    sub.add_parser("site", help="build the static site into public/")
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=os.environ.get("LOG_LEVEL", "INFO"), format="%(asctime)s %(name)s %(message)s"
@@ -87,6 +96,18 @@ def main(argv: list[str] | None = None) -> None:
         from rxradar.transform.build import build_all
 
         build_all()
+    elif args.cmd == "train":
+        from rxradar.model.score import train
+
+        train()
+    elif args.cmd == "score":
+        from rxradar.model.score import score
+
+        score()
+    elif args.cmd == "site":
+        from rxradar.site.build import build_site
+
+        build_site()
 
 
 if __name__ == "__main__":

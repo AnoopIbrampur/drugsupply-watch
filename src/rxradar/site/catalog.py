@@ -16,6 +16,8 @@ are supply facts, not clinical substitutes; the site says so on every page.
 
 from __future__ import annotations
 
+import re
+
 import pandas as pd
 
 FORM_LABELS = {
@@ -68,6 +70,13 @@ def _title(name: str) -> str:
     return " ".join(w if w in small and i else w.capitalize() for i, w in enumerate(words))
 
 
+def clean_fda_name(name: str) -> str:
+    """FDA's list encodes "%" in names as "per" or "chr(37)" ("Sodium
+    Chloride 0.9per Injection"); restore it for display."""
+    name = name.replace("chr(37)", "%")
+    return re.sub(r"(\d)\s?per\b", r"\1%", name)
+
+
 def display_names(
     listings: pd.DataFrame, current_products: pd.DataFrame, families: list[str]
 ) -> pd.Series:
@@ -78,7 +87,7 @@ def display_names(
     """
     names: dict[str, str] = {}
     lst = listings.dropna(subset=["family"]).sort_values("published")
-    names.update(lst.groupby("family").name.last().to_dict())
+    names.update(lst.groupby("family").name.last().map(clean_fda_name).to_dict())
     cp = current_products.dropna(subset=["family"])
     cp = cp[cp.NONPROPRIETARYNAME.str.len() > 0]
     common = cp.groupby("family").NONPROPRIETARYNAME.agg(lambda s: s.str.upper().mode().iloc[0])

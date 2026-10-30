@@ -19,7 +19,7 @@ import logging
 import duckdb
 import pandas as pd
 
-from rxradar.paths import derived_dir, latest_snapshot_dir
+from rxradar.paths import derived_dir
 from rxradar.transform.labels import label_rows, week_coverage, week_grid
 from rxradar.transform.shortage_episodes import build_episodes
 
@@ -53,8 +53,7 @@ def family_universe(products: pd.DataFrame, weeks: pd.DatetimeIndex) -> pd.DataF
 
 
 def build_panel() -> pd.DataFrame:
-    arch = latest_snapshot_dir("fda_shortage_archive")
-    lst = pd.read_parquet(arch / "_listings.parquet")
+    lst = pd.read_parquet(derived_dir() / "listings.parquet")
     names = pd.read_parquet(derived_dir() / "listing_name_families.parquet")
     name_to_family = dict(zip(names.name, names.family, strict=True))
     products = pd.read_parquet(derived_dir() / "product_families.parquet")

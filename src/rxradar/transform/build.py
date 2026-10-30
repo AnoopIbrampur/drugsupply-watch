@@ -13,7 +13,7 @@ import pandas as pd
 
 from rxradar.ingest.fda_shortage_archive import load_listings
 from rxradar.ingest.openfda import load_results
-from rxradar.paths import derived_dir, latest_snapshot_dir
+from rxradar.paths import data_root, derived_dir, latest_snapshot_dir
 from rxradar.transform.families import MoietyResolver, build_product_family_table
 from rxradar.transform.listing_names import ListingNameMapper, openfda_name_families
 from rxradar.transform.panel import build_panel
@@ -23,9 +23,15 @@ log = logging.getLogger(__name__)
 
 
 def build_listings() -> pd.DataFrame:
-    arch = latest_snapshot_dir("fda_shortage_archive")
-    lst = pd.DataFrame(load_listings(arch))
-    lst.to_parquet(arch / "_listings.parquet")
+    """Parse Wayback captures plus our own daily captures of FDA's page into
+    one table (data/derived/listings.parquet). On a timestamp clash our own
+    capture wins."""
+    rows = load_listings(latest_snapshot_dir("fda_shortage_archive"))
+    own_root = data_root() / "raw" / "fda_shortage_page"
+    for day in sorted(own_root.glob("*")) if own_root.exists() else []:
+        rows.extend(load_listings(day))
+    lst = pd.DataFrame(rows).drop_duplicates(["capture_ts", "name", "status"], keep="last")
+    lst.to_parquet(derived_dir() / "listings.parquet")
     return lst
 
 
