@@ -125,3 +125,20 @@ def fit_final(df: pd.DataFrame, cutoff: pd.Timestamp) -> lgb.LGBMClassifier:
     gbm = lgb.LGBMClassifier(**LGB_PARAMS)
     gbm.fit(tr[feature_columns(df)], tr[LABEL], categorical_feature=["form_group"])
     return gbm
+
+
+def run_lightgbm(df: pd.DataFrame, feats: list[str], years=TEST_YEARS) -> pd.DataFrame:
+    """LightGBM-only walk-forward run on a feature subset (for ablations)."""
+    out = []
+    cats = ["form_group"] if "form_group" in feats else []
+    for year in years:
+        cutoff = pd.Timestamp(f"{year}-01-01")
+        tr = df[train_mask(df, cutoff)]
+        te = df[usable(df) & (df.week.dt.year == year)]
+        if te.empty or tr[LABEL].sum() < 20:
+            continue
+        gbm = lgb.LGBMClassifier(**LGB_PARAMS)
+        gbm.fit(tr[feats], tr[LABEL], categorical_feature=cats)
+        base = te[["week", "family", LABEL, "injectable", "multisource_generic"]].assign(year=year)
+        out.append(base.assign(score=gbm.predict_proba(te[feats])[:, 1]))
+    return pd.concat(out, ignore_index=True)

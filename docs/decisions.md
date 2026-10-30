@@ -134,3 +134,16 @@ Positive family-weeks are not independent: each onset labels ~13 weeks at
 90 days. **Recommendation:** report event-level metrics (share of onsets
 flagged in the top-k at least N weeks ahead, plus lead time) alongside
 row-level PR-AUC, with bootstrap CIs resampled over onsets.
+
+## D8 revised (Phase 3, 2026-10-29): headline metric is fixed-lead recall
+
+D8 originally proposed "onset recall@k = family in the top-k in *any* week of
+the 90 days before onset". In the first backtest a **random ranking beat
+every model on that metric** (0.168 vs 0.130 at k=50). It rewards rankings
+that churn: a random list gets ~13 independent tries, while a model that
+ranks a family consistently either flags it or doesn't. `tests/test_metrics.py`
+demonstrates this. The headline is now **recall@k at a fixed lead**: is the
+family in the top-k in the last scored week at least 4 / 8 / 12 weeks before
+the onset? Random scores ≈ k / N on that, as it should. The any-window number
+stays in the report, labelled as flawed. Weekly-precision CIs now resample
+13-week blocks, because neighbouring weeks are strongly correlated.
