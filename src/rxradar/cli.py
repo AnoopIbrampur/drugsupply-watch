@@ -33,6 +33,10 @@ def ingest(source: str) -> None:
         openfda.ingest_dataset(_openfda_client(), "substance")
     if source in ("all", "archive"):
         fda_shortage_archive.ingest(_archive_client())
+    if source in ("all", "ndc_archive"):
+        from rxradar.ingest import ndc_archive
+
+        ndc_archive.ingest(_archive_client())
     if source in ("all", "registry"):
         from rxradar.ingest import fda_registry
 
