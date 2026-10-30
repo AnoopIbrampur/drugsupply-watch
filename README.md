@@ -34,3 +34,20 @@ takes hours on a first run, mostly the Medicaid NADAC history (~170 KB/s from
 data.medicaid.gov). Re-runs skip immutable files. Run single sources with
 `uv run rxradar ingest <openfda|substance|archive|ndc_archive|registry|warning_letters|nadac|dashboard>`.
 `substance` (2.4 GB GSRS file) is reference data and not part of `all`.
+
+## Deploying (GitHub Pages + nightly job)
+The nightly workflow (`.github/workflows/nightly.yml`) runs from a compact state
+archive (~100 MB of derived tables and captures) kept as a GitHub Release asset,
+because the full raw history (~5 GB) doesn't fit a fresh runner. One-time setup,
+after a full local `make ingest && make build` and a backtest run:
+
+```bash
+uv run rxradar train
+uv run rxradar state pack state.tar.gz
+gh release create state state.tar.gz --title "Pipeline state" --notes "Updated nightly by CI."
+```
+
+Then enable Pages (Settings → Pages → Source: GitHub Actions). Optional secrets:
+`FDA_DD_USER`, `FDA_DD_KEY` (FDA Data Dashboard). Every night the job fetches FDA's
+shortage page, openFDA and NDC files (and NADAC on Mondays), rebuilds, scores,
+retrains on the 1st of each month, re-uploads the state and deploys `public/`.

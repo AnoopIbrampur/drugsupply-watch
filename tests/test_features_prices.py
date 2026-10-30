@@ -46,3 +46,24 @@ def test_stale_price_is_treated_as_unpriced():
 
 def test_no_look_ahead():
     check_point_in_time(prices.build, sources(), WEEKS, WEEKS[::15])
+
+
+def test_update_price_table_replaces_from_first_new_week():
+    old = pd.DataFrame(
+        {
+            "family": F,
+            "published": pd.to_datetime(["2026-01-07", "2026-01-14", "2026-01-21"]),
+            "price": [1.0, 1.0, 1.0],
+            "n_ndcs": 3,
+        }
+    )
+    new = pd.DataFrame(
+        {
+            "family": F,
+            "published": pd.to_datetime(["2026-01-14", "2026-01-21", "2026-01-28"]),
+            "price": [2.0, 2.0, 2.0],
+            "n_ndcs": 3,
+        }
+    )
+    out = prices.update_price_table(old, new)
+    assert out.price.tolist() == [1.0, 2.0, 2.0, 2.0]

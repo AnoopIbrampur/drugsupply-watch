@@ -127,3 +127,18 @@ def package_family_map() -> pd.DataFrame:
     m = pkg.merge(prod[["PRODUCTNDC", "family"]].drop_duplicates("PRODUCTNDC"), on="PRODUCTNDC")
     m["ndc11"] = m.NDCPACKAGECODE.map(ndc11)
     return m.dropna(subset=["ndc11"])[["ndc11", "family"]]
+
+
+def update_price_table(existing: pd.DataFrame, new_rows: pd.DataFrame) -> pd.DataFrame:
+    """Replace every row from the first new publication date onward.
+
+    The weekly job downloads only the current year's NADAC file. Its rows
+    supersede what we had for those weeks (CMS republishes the year file
+    every week), and older years are immutable.
+    """
+    if new_rows.empty:
+        return existing
+    start = new_rows.published.min()
+    kept = existing[existing.published < start]
+    out = pd.concat([kept, new_rows], ignore_index=True)
+    return out.sort_values(["family", "published"]).reset_index(drop=True)

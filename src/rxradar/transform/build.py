@@ -48,7 +48,7 @@ def build_listing_name_families(products: pd.DataFrame, listings: pd.DataFrame) 
     return out
 
 
-def build_all() -> None:
+def build_all(features: bool = True) -> None:
     listings = build_listings()
     log.info("listings: %s rows from %s captures", len(listings), listings.capture_ts.nunique())
     products = build_product_family_table()
@@ -56,6 +56,7 @@ def build_all() -> None:
     names = build_listing_name_families(products, listings)
     log.info("listing names mapped: %.1f%%", 100 * names.family.notna().mean())
     build_panel()
-    from rxradar.features.build import build_features
+    if features:
+        from rxradar.features.build import build_features
 
-    build_features()
+        build_features()

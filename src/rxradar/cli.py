@@ -86,6 +86,10 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("train", help="fit the production model (data/derived/model.json)")
     sub.add_parser("score", help="score the latest week (data/site_data/scores.json)")
     sub.add_parser("site", help="build the static site into public/")
+    sub.add_parser("nightly", help="ingest small sources, rebuild, score, build site")
+    p_state = sub.add_parser("state", help="pack/unpack the compact state archive")
+    p_state.add_argument("action", choices=["pack", "unpack"])
+    p_state.add_argument("path")
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=os.environ.get("LOG_LEVEL", "INFO"), format="%(asctime)s %(name)s %(message)s"
@@ -108,6 +112,16 @@ def main(argv: list[str] | None = None) -> None:
         from rxradar.site.build import build_site
 
         build_site()
+    elif args.cmd == "nightly":
+        from rxradar.pipeline import nightly
+
+        nightly()
+    elif args.cmd == "state":
+        from pathlib import Path
+
+        from rxradar.pipeline import pack_state, unpack_state
+
+        (pack_state if args.action == "pack" else unpack_state)(Path(args.path))
 
 
 if __name__ == "__main__":

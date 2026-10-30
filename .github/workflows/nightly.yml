@@ -1,0 +1,55 @@
+name: nightly
+# Fetch fresh public data, rescore, rebuild and deploy the site.
+# Needs a release tagged "state" holding state.tar.gz (see README "Deploying").
+on:
+  schedule:
+    - cron: "17 10 * * *"  # 10:17 UTC daily, after FDA's US-morning updates
+  workflow_dispatch:
+
+permissions:
+  contents: write  # update the state release asset
+  pages: write
+  id-token: write
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RXRADAR_BASE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+      FDA_DD_USER: ${{ secrets.FDA_DD_USER }}
+      FDA_DD_KEY: ${{ secrets.FDA_DD_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --locked
+      - name: Restore state
+        run: |
+          gh release download state --pattern state.tar.gz --dir "$RUNNER_TEMP"
+          uv run rxradar state unpack "$RUNNER_TEMP/state.tar.gz"
+      - name: Ingest, rebuild, score, build site
+        run: uv run rxradar nightly
+      - name: Save state
+        run: |
+          uv run rxradar state pack "$RUNNER_TEMP/state.tar.gz"
+          gh release upload state "$RUNNER_TEMP/state.tar.gz" --clobber
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
