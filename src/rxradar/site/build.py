@@ -123,10 +123,11 @@ def rank_change(e: dict) -> str:
 def index_page(data: dict) -> str:
     ranked = [e for e in data["families"] if e["rank"] is not None]
     rows = "".join(
-        f"<tr><td>{e['rank']}</td><td>{rank_change(e)}</td>"
+        f"<tr><td>{e['rank']}</td><td class='opt'>{rank_change(e)}</td>"
         f"<td><a href='drug/{esc(e['slug'])}.html'>{esc(e['name'])}</a></td>"
-        f"<td>{pct(e['prob'])}</td><td>{e['multiple']}×</td><td>{band_badge(e['band'])}</td>"
-        f"<td class='why'>{esc(e['reasons'][0]) if e['reasons'] else ''}</td></tr>"
+        f"<td>{pct(e['prob'])}</td><td class='opt'>{e['multiple']}×</td>"
+        f"<td>{band_badge(e['band'])}</td>"
+        f"<td class='why opt'>{esc(e['reasons'][0]) if e['reasons'] else ''}</td></tr>"
         for e in ranked[:WATCHLIST_SIZE]
     )
     legend = "".join(f"<li>{band_badge(b)} {esc(BAND_TEXT[b])}</li>" for _, b in BANDS)
@@ -138,8 +139,9 @@ A typical family's chance is about {BASE_RATE * 100:.2f}%. Families already in s
 <a href="shortages.html">listed separately</a>.</p>
 <ul class="legend">{legend}</ul>
 <div class="table-wrap"><table>
-<thead><tr><th>#</th><th>Δ wk</th><th>Drug family</th><th>90-day risk</th><th>vs typical</th>
-<th>Band</th><th>Main reason</th></tr></thead><tbody>{rows}</tbody></table></div>
+<thead><tr><th>#</th><th class="opt">Δ wk</th><th>Drug family</th><th>90-day risk</th>
+<th class="opt">vs typical</th><th>Band</th><th class="opt">Main reason</th></tr></thead>
+<tbody>{rows}</tbody></table></div>
 <h2>Look up any drug</h2>
 <input id="q" type="search" placeholder="e.g. cisplatin, amoxicillin"
   aria-label="Search drug families">

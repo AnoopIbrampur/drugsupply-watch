@@ -4,11 +4,13 @@ A public early-warning system for US drug shortages. For each drug family
 (active ingredient + dosage form + route), RxRadar will estimate the chance that
 a new FDA-listed shortage starts in the next 90 days and explain why.
 
-**Status: Phase 3 (backtest) done.** Point-in-time features, baselines and a
+**Status: Phase 4 (site + nightly pipeline) built and tested locally; not yet
+deployed.** Point-in-time features, baselines and a
 walk-forward backtest: see [docs/model_card.md](docs/model_card.md). The best
 model (a 12-feature logistic regression) would have put ~1 in 4 new shortages
-in a 100-drug watchlist a month ahead (random: ~1 in 45), but only ~1 in 55
-flagged family-weeks is followed by a shortage. No public site yet. Data
+in a 100-drug watchlist a month ahead (random: ~1 in 45), but only ~1 in 50
+flagged family-weeks is followed by a shortage. `uv run rxradar site` builds the
+static site into `public/`. Data
 details: [docs/data_audit.md](docs/data_audit.md); decisions:
 [docs/decisions.md](docs/decisions.md).
 

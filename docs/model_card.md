@@ -99,7 +99,7 @@ random. It still misses three quarters of them.
 
 - The base rate is 0.25%. The best models reach about 4× that in PR-AUC and
   about 6× random in precision@50.
-- Precision@50 is still about 8× below its ceiling: **roughly 1 in 55 flagged
+- Precision@50 is still about 8× below its ceiling: **about 1 in 50 flagged
   family-weeks is followed by a new shortage within 90 days.**
 - For context, the Berkeley project's ~0.1% precision (4-week horizon, unknown
   universe) is the same order as a random ranking at this base rate. This one
@@ -171,3 +171,47 @@ anything.
   ones only ASHP tracks) are invisible here, by design.
 - 9.7% of names ever listed as Current don't map to a family, mostly
   multi-ingredient product classes. Their onsets are not in the labels.
+
+## Production model and calibration (Phase 4)
+
+**Choice:** the 12-feature logistic regression, not LightGBM.
+- The two tie in the backtest.
+- Logistic scores are a sum of per-feature terms, so the site's "why" reasons
+  are exact contributions, not approximations.
+
+**Calibration:** Platt scaling, chosen by a walk-forward check. Each test year
+is calibrated only on earlier years' out-of-sample scores
+(`model/calibrate.py`; 2020–2026, 695,000 rows):
+
+| method | Brier | mean predicted | observed | top 0.1%: predicted / observed |
+|---|---|---|---|---|
+| raw | 0.00243 | 0.0035 | 0.0024 | 0.135 / 0.019 |
+| **Platt** | **0.00241** | 0.0033 | 0.0024 | **0.030 / 0.037** |
+| isotonic | 0.00241 | 0.0036 | 0.0024 | 0.023 / 0.015 |
+
+Reliability for Platt, by predicted-probability bin:
+
+| bin | predicted | observed |
+|---|---|---|
+| 0.5–1% | 0.67% | 0.76% |
+| 1–2% | 1.33% | 1.86% |
+| 2–5% | 2.46% | 2.68% |
+
+- Brier is a near tie. Platt wins on reliability across 0.5–5%, which is the
+  range the watchlist shows. Isotonic over-predicts the 0.5–1% bin (0.66% vs
+  0.30%).
+- After calibration the highest risks are only a few percent. So the site shows
+  **bands relative to a typical family** (base rate 0.25% per 90 days):
+  high ≥ 8×, elevated 4–8×, moderate 2–4×, typical < 2×.
+
+**Caveat:** the production model trains on more data than any backtest model,
+so calibration fitted on backtest scores is an approximation. It can be checked
+again once a year of live scores exists.
+
+**First live run (week of 2026-10-26):**
+- 3,334 families ranked, plus 62 excluded as already in shortage.
+- Bands: 4 high, 38 elevated, 148 moderate.
+- The top is dominated by sterile injectables with past FDA shortages and
+  recall-heavy manufacturers (#1: 0.9% sodium chloride injection, 7.2%).
+- For many families the top reason is just "sterile injectable". That matches
+  the ablation: drug type carries most of the signal.
