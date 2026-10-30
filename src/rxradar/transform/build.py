@@ -50,3 +50,6 @@ def build_all() -> None:
     names = build_listing_name_families(products, listings)
     log.info("listing names mapped: %.1f%%", 100 * names.family.notna().mean())
     build_panel()
+    from rxradar.features.build import build_features
+
+    build_features()
