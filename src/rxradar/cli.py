@@ -45,6 +45,10 @@ def ingest(source: str) -> None:
         from rxradar.ingest import fda_registry
 
         fda_registry.ingest(_openfda_client())
+    if source == "ndc_text":  # NDC files only (nightly); establishments aren't modelled
+        from rxradar.ingest import fda_registry
+
+        fda_registry.ingest(_openfda_client(), sources=("fda_ndc_text",))
     if source in ("all", "warning_letters"):
         from rxradar.ingest import warning_letters
 
@@ -77,6 +81,7 @@ def main(argv: list[str] | None = None) -> None:
             "archive",
             "ndc_archive",
             "registry",
+            "ndc_text",
             "warning_letters",
             "nadac",
             "dashboard",

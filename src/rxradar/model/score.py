@@ -150,12 +150,7 @@ def score(model: ProductionModel | None = None) -> dict:
 
 
 def _current_products() -> pd.DataFrame:
-    from rxradar.ingest.fda_registry import read_tsv
-    from rxradar.paths import latest_snapshot_dir
-    from rxradar.transform.families import MoietyResolver, product_families
-    from rxradar.transform.substances import load_tables
-
-    cur = read_tsv(latest_snapshot_dir("fda_ndc_text") / "product.txt")
-    cur = cur[cur.PRODUCTTYPENAME == "HUMAN PRESCRIPTION DRUG"]
-    resolver = MoietyResolver(*load_tables(latest_snapshot_dir("openfda_substance")))
-    return product_families(cur, resolver)[["NONPROPRIETARYNAME", "family"]]
+    """Currently listed Rx products with their generic names (for display)."""
+    p = pd.read_parquet(derived_dir() / "product_families.parquet")
+    p = p[(p.listing == "current") & p.family.notna()]
+    return p[["NONPROPRIETARYNAME", "family"]].fillna({"NONPROPRIETARYNAME": ""})

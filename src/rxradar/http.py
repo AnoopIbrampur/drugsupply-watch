@@ -20,6 +20,13 @@ log = logging.getLogger(__name__)
 
 USER_AGENT = "rxradar/0.1 (non-commercial research; https://github.com/anoopibrampur/rxradar)"
 RETRY_STATUSES = {429, 500, 502, 503, 504}
+# accessdata.fda.gov sends clients it treats as bots to this page; seen from
+# GitHub Actions runners on 2026-10-30.
+BLOCK_MARKER = "abuse-detection-apology"
+
+
+class BlockedError(RuntimeError):
+    """The server refused us as automated traffic. Never retried."""
 
 
 class PoliteClient:
@@ -77,6 +84,10 @@ class PoliteClient:
                     raise
                 log.warning("transport error on %s (%s); retrying", url, exc)
             else:
+                if BLOCK_MARKER in str(resp.url):
+                    # FDA's bot protection redirected us. Retrying (or
+                    # disguising the client) would be evasion; stop instead.
+                    raise BlockedError(f"{url} redirected to a bot-protection page")
                 if resp.status_code not in RETRY_STATUSES:
                     resp.raise_for_status()
                     if cache is not None:

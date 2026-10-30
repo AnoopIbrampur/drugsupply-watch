@@ -7,8 +7,10 @@ tables and the model. It is stored as a GitHub Release asset and is
 downloaded, updated and re-uploaded on every run.
 
 Nightly (``nightly``):
-1. Fetch the small, fast-changing sources: FDA's shortage page, openFDA
-   (shortages, NDC, recalls, Drugs@FDA) and FDA's NDC text files.
+1. Fetch the small, fast-changing sources: openFDA (shortages, NDC, recalls,
+   Drugs@FDA) and FDA's NDC text files. FDA's shortage page is not fetched
+   here: it blocks cloud servers, and openFDA's daily shortage export carries
+   the same list.
 2. Mondays: refresh the current year's NADAC prices.
 3. Rebuild derived tables, panel and features (NDC snapshots extend
    incrementally; older years' prices are kept).
@@ -73,7 +75,10 @@ def nightly(today: dt.date | None = None) -> None:
     failed = []
     # A source being down must not stop the run: we continue on the last good
     # data, and the site's "Data through" dates show any staleness.
-    for source in ("page", "openfda", "registry"):
+    # FDA's own shortage page and establishment files sit behind bot
+    # protection that blocks cloud runners (2026-10-30); the nightly job uses
+    # openFDA's daily shortage export instead (see transform/build.py).
+    for source in ("openfda", "ndc_text"):
         try:
             ingest(source)
         except Exception:

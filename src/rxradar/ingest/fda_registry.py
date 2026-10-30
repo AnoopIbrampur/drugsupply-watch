@@ -34,11 +34,14 @@ FILES = {
 }
 
 
-def ingest(client: PoliteClient) -> list[Path]:
-    """Download and unzip every file in FILES; keep only the .txt members
-    (the .xls copies in the same zips are byte-identical tab-separated text)."""
+def ingest(client: PoliteClient, sources: tuple[str, ...] | None = None) -> list[Path]:
+    """Download and unzip the files in FILES (or only ``sources``); keep only
+    the .txt members (the .xls copies in the same zips are byte-identical
+    tab-separated text)."""
     outs = []
     for source, names in FILES.items():
+        if sources is not None and source not in sources:
+            continue
         out = raw_snapshot_dir(source)
         for name in names:
             blob = client.get_bytes(BASE + name, use_cache=False)

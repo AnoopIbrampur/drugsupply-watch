@@ -86,3 +86,23 @@ def load_results(snapshot_dir: Path) -> list[dict]:
             continue
         records.extend(json.loads(path.read_text())["results"])
     return records
+
+
+def shortage_listing_rows(snapshot_dir: Path) -> list[dict]:
+    """One openFDA shortage snapshot as listing rows (capture_ts, name, status).
+
+    openFDA's shortage file carries the same list as FDA's public page (on
+    2026-10-30: Current 69 vs 69 names, To Be Discontinued 169 vs 172, Resolved
+    5 vs 5; the page writes "%" as "per"). It is FDA's sanctioned automated
+    channel, while the page itself blocks cloud servers as bots, so the
+    nightly job uses it as the daily capture. Timestamped noon on the export
+    date.
+    """
+    manifest = json.loads((snapshot_dir / "manifest.json").read_text())
+    ts = manifest["export_date"].replace("-", "") + "120000"
+    rows = {
+        (" ".join(r["generic_name"].split()), r["status"])
+        for r in load_results(snapshot_dir)
+        if r.get("generic_name") and r.get("status")
+    }
+    return [{"capture_ts": ts, "name": n, "status": s} for n, s in sorted(rows)]

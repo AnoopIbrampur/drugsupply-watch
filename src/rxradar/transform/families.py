@@ -234,10 +234,11 @@ def build_product_family_table() -> pd.DataFrame:
     exc = resolve_delisted(exc, app_fams).assign(listing="excluded")
 
     keep = [
-        "PRODUCTID", "PRODUCTNDC", "LABELERNAME", "PROPRIETARYNAME", "APPLICATIONNUMBER",
+        "PRODUCTID", "PRODUCTNDC", "LABELERNAME", "PROPRIETARYNAME", "NONPROPRIETARYNAME",
+        "APPLICATIONNUMBER",
         "MARKETINGCATEGORYNAME", "STARTMARKETINGDATE", "ENDMARKETINGDATE", "NDC_EXCLUDE_FLAG",
         "listing", "family", "family_source",
     ]  # fmt: skip
-    out = pd.concat([cur[keep], exc[keep]], ignore_index=True)
+    out = pd.concat([cur.reindex(columns=keep), exc.reindex(columns=keep)], ignore_index=True)
     out.to_parquet(derived_dir() / "product_families.parquet")
     return out
