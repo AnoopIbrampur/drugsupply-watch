@@ -181,7 +181,7 @@ anything.
 
 **Calibration:** Platt scaling, chosen by a walk-forward check. Each test year
 is calibrated only on earlier years' out-of-sample scores
-(`model/calibrate.py`; 2020–2026, 695,000 rows):
+(`model/calibrate.py`; 2020–2026, 696,400 rows):
 
 | method | Brier | mean predicted | observed | top 0.1%: predicted / observed |
 |---|---|---|---|---|
