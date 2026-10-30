@@ -21,7 +21,6 @@ jobs:
     timeout-minutes: 90
     env:
       GH_TOKEN: ${{ github.token }}
-      RXRADAR_BASE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
       FDA_DD_USER: ${{ secrets.FDA_DD_USER }}
       FDA_DD_KEY: ${{ secrets.FDA_DD_KEY }}
     steps:
@@ -30,6 +29,10 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --locked
+      - name: Site URL for RSS links (Pages hosts are lowercase)
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "RXRADAR_BASE_URL=https://${owner}.github.io/${GITHUB_REPOSITORY#*/}/" >> "$GITHUB_ENV"
       - name: Restore state
         run: |
           gh release download state --pattern state.tar.gz --dir "$RUNNER_TEMP"
