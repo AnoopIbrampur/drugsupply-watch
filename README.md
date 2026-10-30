@@ -4,8 +4,9 @@ A public early-warning system for US drug shortages. For each drug family
 (active ingredient + dosage form + route), RxRadar will estimate the chance that
 a new FDA-listed shortage starts in the next 90 days and explain why.
 
-**Status: Phase 4 (site + nightly pipeline) built and tested locally; not yet
-deployed.** Point-in-time features, baselines and a
+**Live:** https://anoopibrampur.github.io/rxradar/ (rebuilt nightly by GitHub Actions).
+
+**Status: Phase 4 deployed.** Point-in-time features, baselines and a
 walk-forward backtest: see [docs/model_card.md](docs/model_card.md). The best
 model (a 12-feature logistic regression) would have put ~1 in 4 new shortages
 in a 100-drug watchlist a month ahead (random: ~1 in 45), but only ~1 in 50
@@ -49,7 +50,12 @@ uv run rxradar state pack state.tar.gz
 gh release create state state.tar.gz --title "Pipeline state" --notes "Updated nightly by CI."
 ```
 
-Then enable Pages (Settings → Pages → Source: GitHub Actions). Optional secrets:
+Then enable Pages (Settings → Pages → Source: GitHub Actions).
+
+FDA's `accessdata.fda.gov` pages sit behind bot protection that redirects cloud
+runners to an "abuse detection" page, so the nightly job never requests FDA's
+shortage page. It records openFDA's daily shortage export instead (same list),
+and treats any bot-protection redirect as a hard stop, never a retry. Optional secrets:
 `FDA_DD_USER`, `FDA_DD_KEY` (FDA Data Dashboard). Every night the job fetches FDA's
 shortage page, openFDA and NDC files (and NADAC on Mondays), rebuilds, scores,
 retrains on the 1st of each month, re-uploads the state and deploys `public/`.
