@@ -1,1 +1,1 @@
-"""Placeholder: built in a later phase."""
+"""Static site: watchlist, family pages, RSS (built by `rxradar site`)."""
