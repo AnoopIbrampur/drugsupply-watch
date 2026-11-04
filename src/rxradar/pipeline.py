@@ -15,7 +15,8 @@ Nightly (``nightly``):
 3. Rebuild derived tables, panel and features (NDC snapshots extend
    incrementally; older years' prices are kept).
 4. On the 1st of the month: retrain the production model.
-5. Score the latest week and build the site into public/.
+5. Score the latest week, freeze it if it's a new week (track.py), rescore
+   the track record, and build the site into public/.
 """
 
 from __future__ import annotations
@@ -67,8 +68,9 @@ def unpack_state(archive: Path) -> None:
 def nightly(today: dt.date | None = None) -> None:
     from rxradar.cli import ingest
     from rxradar.features.build import build_features
-    from rxradar.model.score import score, train
+    from rxradar.model.score import score, site_data_dir, train
     from rxradar.site.build import build_site
+    from rxradar.track import update_track_record
     from rxradar.transform.build import build_all
 
     today = today or dt.date.today()
@@ -94,7 +96,7 @@ def nightly(today: dt.date | None = None) -> None:
     build_features()
     if today.day == 1 or not (derived_dir() / "model.json").exists():
         train(pd.Timestamp(today))
-    score()
+    update_track_record(score(), site_data_dir())
     build_site()
     if failed:
         log.warning("nightly finished with stale sources: %s", ", ".join(failed))

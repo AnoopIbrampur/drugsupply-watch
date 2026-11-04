@@ -38,6 +38,12 @@ data.medicaid.gov). Re-runs skip immutable files. Run single sources with
 `uv run rxradar ingest <openfda|substance|archive|ndc_archive|registry|warning_letters|nadac|dashboard>`.
 `substance` (2.4 GB GSRS file) is reference data and not part of `all`.
 
+## Track record
+Each week's predictions are frozen before their outcomes are known, on the
+[`predictions`](https://github.com/AnoopIbrampur/rxradar/tree/predictions) branch, and
+scored by rules fixed in advance ([decisions D9](docs/decisions.md)). Saved weeks are
+never rewritten, and results appear on the site's Track Record page.
+
 ## Deploying (GitHub Pages + nightly job)
 The nightly workflow (`.github/workflows/nightly.yml`) runs from a compact state
 archive (~100 MB of derived tables and captures) kept as a GitHub Release asset,

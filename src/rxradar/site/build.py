@@ -6,6 +6,7 @@ home page. Every value is HTML-escaped. Pages:
 - drug/<slug>.html: one page per family (risk, reasons, 2-year history
   sparkline, makers and other forms of the same ingredient);
 - shortages.html: families on FDA's shortage list now (not ranked);
+- track-record.html: live results from frozen predictions;
 - about.html: method, backtest results, limits, sources;
 - feed.xml: RSS for families entering the top 50 or moving up a band.
 
@@ -24,8 +25,10 @@ from pathlib import Path
 from xml.sax.saxutils import escape as xml_escape
 
 from rxradar.model.production import BANDS, BASE_RATE, band
+from rxradar.track import KS, MIN_ONSETS_FOR_BANDS
 
 WATCHLIST_SIZE = 50
+REPO_URL = "https://github.com/AnoopIbrampur/rxradar"
 SITE_TITLE = "RxRadar"
 DISCLAIMER = (
     "RxRadar estimates <strong>supply risk</strong> from public FDA and Medicaid data. "
@@ -65,7 +68,8 @@ def page(title: str, body: str, root: str = "", freshness: dict | None = None) -
 </head><body>
 <header><a class="brand" href="{root}index.html">{SITE_TITLE}</a>
 <nav><a href="{root}index.html">Watchlist</a><a href="{root}shortages.html">In shortage now</a>
-<a href="{root}about.html">Method &amp; limits</a><a href="{root}feed.xml">RSS</a></nav></header>
+<a href="{root}track-record.html">Track record</a><a href="{root}about.html">Method &amp;
+limits</a><a href="{root}feed.xml">RSS</a></nav></header>
 <main>
 <p class="disclaimer">{DISCLAIMER}</p>
 {body}
@@ -233,6 +237,91 @@ database</a> is the authoritative source.</p>
     return page("In shortage now: RxRadar", body, freshness=data["freshness"])
 
 
+def rate(x: float | None) -> str:
+    return "—" if x is None else f"{x * 100:.1f}%"
+
+
+def track_page(track: dict | None, data: dict) -> str:
+    """Live results only; never mixed with the backtest (decisions D9)."""
+    if not track or not track["weeks_frozen"]:
+        body = """<h1>Track record</h1>
+<p>Tracking hasn't started yet. Once it does, each week's predictions are saved before
+their outcomes are known, and scored here in public.</p>"""
+        return page("Track record: RxRadar", body, freshness=data["freshness"])
+    s = track["summary"]
+    rows = "".join(
+        f"<tr><td>Top {k}</td><td>{rate(s[f'recall@{k}'])}</td>"
+        f"<td>{rate(s[f'rule_recall@{k}'])}</td><td>{rate(s[f'random_recall@{k}'])}</td></tr>"
+        for k in KS
+    )
+    prec = "".join(
+        f"<tr><td>Top {k}</td><td>{rate(s[f'precision@{k}'])}</td>"
+        f"<td>{rate(s[f'rule_precision@{k}'])}</td><td>{rate(s['random_precision'])}</td></tr>"
+        for k in KS
+    )
+    onset_rows = "".join(
+        f"<tr><td>{esc(o['start'])}</td><td>{esc(o['name'])}</td>"
+        f"<td>{'—' if o['rank'] is None else o['rank']}</td><td>{o['lead_days']} days</td>"
+        f"<td>{'caught (top 100)' if o['hit@100'] else 'missed'}</td></tr>"
+        for o in reversed(track["onsets"])
+    )
+    onsets = (
+        "<div class='table-wrap'><table><thead><tr><th>Shortage began</th><th>Drug family</th>"
+        "<th>Rank before it</th><th>Lead</th><th>Result</th></tr></thead>"
+        f"<tbody>{onset_rows}</tbody></table></div>"
+        if onset_rows
+        else "<p>No shortage has been scored yet.</p>"
+    )
+    bands = ""
+    if track["bands"]:
+        band_rows = "".join(
+            f"<tr><td>{band_badge(b['band'])}</td><td>{rate(b['predicted'])}</td>"
+            f"<td>{rate(b['observed'])}</td><td>{b['family_weeks']:,}</td></tr>"
+            for b in track["bands"]
+        )
+        bands = (
+            "<h2>Predicted vs actual, by risk band</h2><div class='table-wrap'><table><thead>"
+            "<tr><th>Band</th><th>Predicted</th><th>Actual</th><th>Family-weeks</th></tr></thead>"
+            f"<tbody>{band_rows}</tbody></table></div>"
+        )
+    early = ""
+    if track["onsets_scored"] < MIN_ONSETS_FOR_BANDS:
+        early = (
+            f"<p class='status'><strong>Too early to judge.</strong> Only "
+            f"{track['onsets_scored']} shortages have been scored so far. New FDA-listed "
+            "shortages are rare, so these numbers will swing a lot until there are dozens.</p>"
+        )
+    body = f"""
+<h1>Track record</h1>
+<p>Each week's predictions are saved before their outcomes are known, and never changed
+afterwards. The saved files are public, with their timestamps, on the
+<a href="{REPO_URL}/tree/predictions">predictions branch</a>. These are live results, kept
+separate from the backtest on the <a href="about.html">method page</a>. The
+<a href="{REPO_URL}/blob/main/docs/decisions.md">scoring rules (D9)</a> were published before
+any result existed.</p>
+{early}
+<ul class="stats">
+<li><strong>{esc(track["started"])}</strong> tracking began</li>
+<li><strong>{track["weeks_frozen"]}</strong> weeks saved</li>
+<li><strong>{track["weeks_pending"]}</strong> still inside their 90 days</li>
+<li><strong>{track["weeks_scored"]}</strong> weeks scored</li>
+<li><strong>{track["onsets_scored"]}</strong> shortages scored</li>
+</ul>
+<h2>Shortages flagged at least 4 weeks ahead</h2>
+<div class="table-wrap"><table><thead><tr><th>Watchlist size</th><th>RxRadar</th>
+<th>Simple rule</th><th>Random</th></tr></thead><tbody>{rows}</tbody></table></div>
+<h2>Flagged drugs that went short within 90 days</h2>
+<div class="table-wrap"><table><thead><tr><th>Watchlist size</th><th>RxRadar</th>
+<th>Simple rule</th><th>Random</th></tr></thead><tbody>{prec}</tbody></table></div>
+{bands}
+<h2>Every scored shortage</h2>
+{onsets}
+<p class="note">The simple rule ranks drugs by recent shortages, injectable form, few makers and
+shortages in other forms. {track["weeks_unknown"]} weeks are unscorable because of data gaps,
+and {track["onsets_too_soon"]} shortages began too soon after tracking started to score.</p>"""
+    return page("Track record: RxRadar", body, freshness=data["freshness"])
+
+
 def about_page(data: dict) -> str:
     body = f"""
 <h1>Method and limits</h1>
@@ -331,6 +420,9 @@ def build_site(scores_path: Path | None = None, out: Path | None = None) -> Path
     (out / "index.html").write_text(index_page(data))
     (out / "shortages.html").write_text(shortages_page(data, slugs))
     (out / "about.html").write_text(about_page(data))
+    track_path = scores_path.parent / "track_record.json"
+    track = json.loads(track_path.read_text()) if track_path.exists() else None
+    (out / "track-record.html").write_text(track_page(track, data))
     for e in data["families"]:
         (out / "drug" / f"{e['slug']}.html").write_text(drug_page(e, data, slugs))
     search = [{"n": e["name"], "s": e["slug"], "b": search_label(e)} for e in data["families"]]

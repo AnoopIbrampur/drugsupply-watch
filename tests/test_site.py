@@ -62,9 +62,14 @@ def scores(tmp_path):
 
 def test_pages_exist_and_carry_the_disclaimer(tmp_path):
     out = build_site(scores(tmp_path), tmp_path / "public")
-    pages = [out / "index.html", out / "about.html", out / "shortages.html"]
+    pages = [
+        out / "index.html",
+        out / "about.html",
+        out / "shortages.html",
+        out / "track-record.html",
+    ]
     pages += sorted((out / "drug").glob("*.html"))
-    assert len(pages) == 6
+    assert len(pages) == 7
     for p in pages:
         assert "not clinical advice" in p.read_text()
 
@@ -96,3 +101,62 @@ def test_search_index(tmp_path):
     out = build_site(scores(tmp_path), tmp_path / "public")
     idx = json.loads((out / "search.json").read_text())
     assert {e["s"] for e in idx} == {"evil", "steady", "short"}
+
+
+def track_record(**over):
+    summary = {
+        "precision@50": None,
+        "rule_precision@50": None,
+        "precision@100": None,
+        "rule_precision@100": None,
+        "random_precision": None,
+        "recall@50": 0.5,
+        "rule_recall@50": 0.0,
+        "random_recall@50": 0.015,
+        "recall@100": 1.0,
+        "rule_recall@100": 0.5,
+        "random_recall@100": 0.03,
+    }
+    record = {
+        "started": "2026-11-03",
+        "weeks_frozen": 12,
+        "weeks_pending": 12,
+        "weeks_scored": 0,
+        "weeks_unknown": 0,
+        "onsets_scored": 2,
+        "onsets_too_soon": 1,
+        "summary": summary,
+        "onsets": [
+            {
+                "start": "2027-01-01",
+                "name": "<b>Drug</b>",
+                "rank": 7,
+                "lead_days": 40,
+                "hit@100": True,
+            },
+            {
+                "start": "2027-01-08",
+                "name": "Missed",
+                "rank": None,
+                "lead_days": 35,
+                "hit@100": False,
+            },
+        ],
+        "weeks": [],
+        "bands": None,
+    }
+    return {**record, **over}
+
+
+def test_track_page_shows_misses_and_warns_when_early(tmp_path):
+    (tmp_path / "track_record.json").write_text(json.dumps(track_record()))
+    html = (build_site(scores(tmp_path), tmp_path / "public") / "track-record.html").read_text()
+    assert "Too early to judge" in html
+    assert "missed" in html and "caught (top 100)" in html
+    assert "&lt;b&gt;Drug&lt;/b&gt;" in html  # names are escaped
+    assert "predicted vs actual" not in html.lower()  # bands wait for 30 onsets
+
+
+def test_track_page_before_tracking_starts(tmp_path):
+    html = (build_site(scores(tmp_path), tmp_path / "public") / "track-record.html").read_text()
+    assert "hasn't started" in html

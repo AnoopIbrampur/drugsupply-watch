@@ -25,6 +25,11 @@ jobs:
       FDA_DD_KEY: ${{ secrets.FDA_DD_KEY }}
     steps:
       - uses: actions/checkout@v4
+      - name: Check out frozen predictions
+        uses: actions/checkout@v4
+        with:
+          ref: predictions
+          path: predictions_store
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.12"
@@ -37,12 +42,40 @@ jobs:
         run: |
           gh release download state --pattern state.tar.gz --dir "$RUNNER_TEMP"
           uv run rxradar state unpack "$RUNNER_TEMP/state.tar.gz"
-      - name: Ingest, rebuild, score, build site
+      - name: Ingest, rebuild, score, freeze, build site
         run: uv run rxradar nightly
+        env:
+          RXRADAR_PREDICTIONS: ${{ github.workspace }}/predictions_store
+      - name: Publish a newly frozen week
+        working-directory: predictions_store
+        run: |
+          git config user.name "rxradar-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "This week is already frozen."
+          else
+            git commit -m "Freeze predictions $(date -u +%F)"
+            git push origin predictions
+          fi
       - name: Save state
         run: |
           uv run rxradar state pack "$RUNNER_TEMP/state.tar.gz"
           gh release upload state "$RUNNER_TEMP/state.tar.gz" --clobber
+      # GitHub disables scheduled workflows on public repos after 60 days with no
+      # repository activity. Its docs don't define activity; reports say commits
+      # on the default branch count, so make one only if main has gone quiet.
+      - name: Keep the schedule alive
+        run: |
+          age_days=$(( ( $(date +%s) - $(git log -1 --format=%ct) ) / 86400 ))
+          if [ "$age_days" -gt 45 ]; then
+            git config user.name "rxradar-bot"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            date -u +%F > .last-nightly
+            git add .last-nightly
+            git commit -m "Keep scheduled workflow active"
+            git push origin HEAD:main
+          fi
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public

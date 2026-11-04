@@ -91,6 +91,7 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("train", help="fit the production model (data/derived/model.json)")
     sub.add_parser("score", help="score the latest week (data/site_data/scores.json)")
     sub.add_parser("site", help="build the static site into public/")
+    sub.add_parser("track", help="freeze this week if new, rescore the track record")
     sub.add_parser("nightly", help="ingest small sources, rebuild, score, build site")
     p_state = sub.add_parser("state", help="pack/unpack the compact state archive")
     p_state.add_argument("action", choices=["pack", "unpack"])
@@ -117,6 +118,14 @@ def main(argv: list[str] | None = None) -> None:
         from rxradar.site.build import build_site
 
         build_site()
+    elif args.cmd == "track":
+        import json
+
+        from rxradar.model.score import site_data_dir
+        from rxradar.track import update_track_record
+
+        scores = json.loads((site_data_dir() / "scores.json").read_text())
+        update_track_record(scores, site_data_dir())
     elif args.cmd == "nightly":
         from rxradar.pipeline import nightly
 

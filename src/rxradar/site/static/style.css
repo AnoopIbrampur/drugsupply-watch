@@ -52,6 +52,8 @@ input[type=search] { width: 100%; max-width: 420px; padding: 0.5rem 0.6rem; font
   color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 6px; }
 #results { list-style: none; padding: 0; }
 #results li { padding: 0.25rem 0; }
+.stats { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 0.5rem 1.75rem; }
+.stats strong { display: block; font-size: 1.25rem; }
 @media (max-width: 600px) {
   .opt { display: none; }  /* drug pages carry the full detail */
   h1 { font-size: 1.6rem; }

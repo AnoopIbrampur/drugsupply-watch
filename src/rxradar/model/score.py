@@ -24,6 +24,7 @@ import re
 import numpy as np
 import pandas as pd
 
+from rxradar.model.backtest import rule_score
 from rxradar.model.dataset import load_dataset
 from rxradar.model.production import BASE_RATE, ProductionModel, band, top_reasons
 from rxradar.paths import data_root, derived_dir
@@ -95,6 +96,11 @@ def score(model: ProductionModel | None = None) -> dict:
     contrib = model.contributions(now)
     ranked = now[~now.in_shortage_now].sort_values("prob", ascending=False)
     rank = pd.Series(np.arange(1, len(ranked) + 1), index=ranked.index)
+    # The rule baseline's rank, for the track record (decisions D9). Ties break
+    # by family key, not model order, so the baseline borrows nothing from the model.
+    by_rule = ranked.assign(rule=rule_score(ranked), fam=ranked.index)
+    by_rule = by_rule.sort_values(["rule", "fam"], ascending=[False, True])
+    rule_rank = pd.Series(np.arange(1, len(by_rule) + 1), index=by_rule.index)
     prev_week = recent[recent.week == latest - pd.Timedelta(weeks=1)]
     prev = prev_week[~prev_week.in_shortage_now].sort_values("prob", ascending=False)
     prev_rank = pd.Series(np.arange(1, len(prev) + 1), index=prev.family.values)
@@ -117,6 +123,7 @@ def score(model: ProductionModel | None = None) -> dict:
                 "multiple": None if row.in_shortage_now else round(p / BASE_RATE, 1),
                 "rank": int(rank[fam]) if fam in rank else None,
                 "prev_rank": int(prev_rank[fam]) if fam in prev_rank else None,
+                "rule_rank": int(rule_rank[fam]) if fam in rule_rank else None,
                 "reasons": [] if row.in_shortage_now else top_reasons(contrib.loc[fam], row),
                 "n_labelers": None if pd.isna(row.sup_n_labelers) else int(row.sup_n_labelers),
                 "injectable": bool(row.injectable),
@@ -139,6 +146,7 @@ def score(model: ProductionModel | None = None) -> dict:
         "model": {
             "type": "calibrated logistic regression",
             "trained_through": model.trained_through,
+            "sha256": hashlib.sha256(model_path().read_bytes()).hexdigest()[:16],
         },
         "base_rate": BASE_RATE,
         "freshness": _freshness(),
