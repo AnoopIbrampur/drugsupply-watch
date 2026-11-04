@@ -285,10 +285,18 @@ their outcomes are known, and scored here in public.</p>"""
             f"<tbody>{band_rows}</tbody></table></div>"
         )
     early = ""
-    if track["onsets_scored"] < MIN_ONSETS_FOR_BANDS:
+    n_scored = track["onsets_scored"]
+    if n_scored < MIN_ONSETS_FOR_BANDS:
+        so_far = (
+            f"Only {n_scored} shortages have been scored."
+            if n_scored
+            else (
+                "No shortages have been scored yet: the first week finishes its 90 days about "
+                "three months after tracking began."
+            )
+        )
         early = (
-            f"<p class='status'><strong>Too early to judge.</strong> Only "
-            f"{track['onsets_scored']} shortages have been scored so far. New FDA-listed "
+            f"<p class='status'><strong>Too early to judge.</strong> {so_far} New FDA-listed "
             "shortages are rare, so these numbers will swing a lot until there are dozens.</p>"
         )
     body = f"""
