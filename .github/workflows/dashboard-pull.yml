@@ -1,0 +1,29 @@
+name: dashboard-pull
+# Download FDA Data Dashboard inspections and compliance actions (needs the
+# repo secrets) and publish them as a release asset for local analysis.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --locked
+      - run: uv run rxradar ingest dashboard
+        env:
+          FDA_DD_USER: ${{ secrets.FDA_DD_USER }}
+          FDA_DD_KEY: ${{ secrets.FDA_DD_KEY }}
+      - name: Publish
+        run: |
+          tar -czf "$RUNNER_TEMP/fda_dashboard.tar.gz" -C data/raw fda_dashboard
+          gh release upload state "$RUNNER_TEMP/fda_dashboard.tar.gz" --clobber
