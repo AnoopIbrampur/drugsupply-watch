@@ -94,6 +94,7 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("track", help="freeze this week if new, rescore the track record")
     sub.add_parser("nightly", help="ingest small sources, rebuild, score, build site")
     sub.add_parser("dashboard-check", help="test FDA Data Dashboard credentials")
+    sub.add_parser("dailymed", help="fetch label version history (slow, resumable)")
     p_state = sub.add_parser("state", help="pack/unpack the compact state archive")
     p_state.add_argument("action", choices=["pack", "unpack"])
     p_state.add_argument("path")
@@ -127,6 +128,22 @@ def main(argv: list[str] | None = None) -> None:
 
         scores = json.loads((site_data_dir() / "scores.json").read_text())
         update_track_record(scores, site_data_dir())
+    elif args.cmd == "dailymed":
+        import datetime as dt
+
+        import pandas as pd
+
+        from rxradar.ingest import dailymed
+        from rxradar.paths import derived_dir
+
+        panel = pd.read_parquet(derived_dir() / "panel.parquet")
+        latest = panel[panel.week == panel.week.max()]
+        families = latest[latest.multisource_generic | latest.injectable].family.tolist()
+        products = pd.read_parquet(derived_dir() / "product_families.parquet")
+        selected = dailymed.select_products(products[products.listing == "current"], families)
+        logging.getLogger("httpx").setLevel(logging.WARNING)
+        client = PoliteClient(min_interval=1.0)
+        dailymed.ingest(client, selected, dt.date.today().year)
     elif args.cmd == "dashboard-check":
         import json
 

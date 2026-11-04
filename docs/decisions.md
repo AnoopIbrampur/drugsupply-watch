@@ -195,3 +195,24 @@ This changes which onsets exist, so it's recorded here. No week had been scored,
 the one frozen file (2026-11-02) is unchanged. The scoring rules are unchanged. Families
 that turned out to be already in shortage, such as streptozocin, can't produce a false
 onset: their episodes began long before tracking did.
+
+## D10. Dating FDA inspection outcomes — DECIDED 2026-11-04 (Option B)
+
+The Data Dashboard shows final outcomes but not when each became public.
+`FMD145Date` (final classification letter) is the best evidence, but it is filled on
+only 15.5% of failed (OAI) drug-quality inspections and about half of the others, so
+requiring it would drop most failures.
+
+An inspection outcome counts from the first of these that applies:
+1. `FMD145Date` + 30 days.
+2. Otherwise `InspectionEndDate` + the 90th percentile of the dated delay for that
+   outcome: **OAI 877 days, VAI 292, NAI 197** (dated results, 0–1,500 days).
+
+Warning letters, injunctions and seizures count from `ActionTakenDate` + 30 days.
+Only Drug Quality Assurance inspections are used.
+
+Rejected: dropping undated results (loses 2,146 of 2,541 failures), and the median
+delay (about half of results would count before they were public).
+
+Limit: the OAI delay rests on only 362 dated results, which may not be typical. It's
+a safeguard, not a measurement of each result's publication date.
