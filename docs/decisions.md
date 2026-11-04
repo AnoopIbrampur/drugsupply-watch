@@ -147,3 +147,42 @@ family in the top-k in the last scored week at least 4 / 8 / 12 weeks before
 the onset? Random scores ≈ k / N on that, as it should. The any-window number
 stays in the report, labelled as flawed. Weekly-precision CIs now resample
 13-week blocks, because neighbouring weeks are strongly correlated.
+
+## D9. Live track record rules — DECIDED 2026-11-03, before any live result existed
+
+Backtests can flatter a model. The track record scores predictions frozen before
+their outcomes were known. These rules are fixed now; any later change is added
+here as a dated amendment, and old results stay published under the old rule.
+
+**Freezing**
+- The first nightly run that sees a new week saves every ranked family's risk,
+  rank and band, the rule baseline's rank, the families excluded as already in
+  shortage, the model hash and the data dates.
+- Files live on the `predictions` branch as `<week>.json.gz`. A file that exists
+  is never overwritten. Git history is the public timestamp.
+- A prediction's **anchor** is the UTC date it was frozen, not its week label.
+- Nothing is backfilled. Tracking starts with the first frozen week.
+
+**Outcome.** A dated onset: a family listed as Current on FDA's list after at
+least 8 observed weeks off it, with no capture gap over 21 days just before it
+(the backtest rule, decisions D4). Onsets seen in one capture and then gone are
+page glitches and are not counted.
+
+**Headline: onset recall@k at a 4-week lead, k = 50 and 100.** For each onset,
+take the latest frozen week whose anchor is 28–90 days before the onset. It's a
+hit if the family's rank was ≤ k. A family that wasn't ranked that week is a miss.
+- A family in that week's excluded list is skipped (it was already in shortage).
+- Onsets with no frozen week in that window are "too soon to score" and are
+  left out of the denominator.
+
+**Weekly precision@k.** For a frozen week whose 90 days have passed: the share of
+its top-k families with an onset in (anchor, anchor + 90 days].
+- Weeks still inside their 90 days are "pending".
+- Weeks whose window has a capture gap over 21 days are "unknown", not misses.
+
+**Comparisons.** Random (expected recall k / number of ranked families; expected
+precision = the week's positive share) and the hand-written backtest rule.
+
+**Reporting.** Every scored onset is listed, hit or miss. Live results are never
+merged with backtest results. Results by risk band appear only after 30 scored
+onsets, because fewer than that would be mostly noise.
