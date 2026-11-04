@@ -369,3 +369,25 @@ Data surprises found while building this:
 - It is **untested against the live API** until `FDA_DD_USER` / `FDA_DD_KEY` exist.
 - Features must date inspection outcomes by `FMD145Date` (final classification letter),
   not `InspectionEndDate`.
+
+## Name mapping update (2026-11-04)
+
+44 reviewed overrides, each with a reason, in
+`src/rxradar/transform/data/listing_name_overrides.csv`. Only clear matches were mapped.
+
+| | before | after |
+|---|---|---|
+| Names ever listed as Current that map | 90.3% | **96.7%** (96.5% by listing-weeks) |
+| Dated onsets | 274 | **287** across 252 families |
+| Starts on the 2023-09-18 rename date | 10 | 6 |
+
+- **Why dated onsets were 274 here and 270 earlier:** two gap-fill captures arrived after
+  the Phase 2 count.
+- **Left unmapped on purpose (20 names):** multi-product classes (multivitamin infusions,
+  dialysis and CRRT solutions, amino acids, trace elements), ambiguous names (bare
+  "Diltiazem Hydrochloride", "Phosphate Injection Products", "Sterile Water"), and products
+  with no matching family (Liotrix, Erwinaze, Tc-99m sulfur colloid).
+- **FDA test data:** "TEST ADD REASON SHORTAGE" appeared on FDA's public list for 29 weeks
+  in 2022–23. It is excluded.
+- **Class listings would need a new design:** one listing covering several families can't
+  be expressed with today's one-name-one-family mapping.

@@ -108,7 +108,8 @@ class ListingNameMapper:
     ) -> None:
         self.resolver = resolver
         self.openfda_names = {k.lower(): v for k, v in (openfda_names or {}).items()}
-        self.overrides = {k.lower(): v for k, v in (overrides or load_overrides()).items()}
+        overrides = load_overrides() if overrides is None else overrides
+        self.overrides = {k.lower().strip(): v for k, v in overrides.items()}
         self.diluents = frozenset(resolver.moiety(n) for n in DILUENT_NAMES)
         self.by_moieties: dict[frozenset[str], set[str]] = defaultdict(set)
         for fam in families:
@@ -178,7 +179,7 @@ class ListingNameMapper:
 
 def load_overrides() -> dict[str, str]:
     path = resources.files("rxradar.transform") / "data" / "listing_name_overrides.csv"
-    with path.open() as fh:
+    with path.open(encoding="utf-8") as fh:
         return {r["listing_name"]: r["family"] for r in csv.DictReader(fh)}
 
 

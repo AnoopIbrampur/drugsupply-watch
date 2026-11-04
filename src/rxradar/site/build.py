@@ -343,7 +343,7 @@ elevated 4–8×, moderate 2–4×.</p>
 public at the time):</p>
 <ul>
 <li>A watchlist of the top 100 families included about <strong>1 in 4</strong> new shortages
-at least 4 weeks before FDA listed them. A random list caught about 1 in 45.</li>
+at least 4 weeks before FDA listed them. A random list caught about 1 in 30.</li>
 <li>About <strong>1 in 50</strong> flagged family-weeks was followed by a new shortage
 within 90 days. Most drugs on the list do not go short.</li>
 <li>Most of the signal comes from what kind of drug it is (sterile injectables and old
@@ -361,7 +361,7 @@ since 2014 for history.</li>
 <h2>Limits</h2>
 <ul>
 <li>Only shortages FDA lists are counted. Other shortage lists are not used.</li>
-<li>About 10% of FDA's shortage names (mostly multi-ingredient products such as IV
+<li>About 3% of FDA's shortage names (mostly multi-ingredient products such as IV
 nutrition and dialysis fluids) can't be matched to a drug family and are missing.</li>
 <li>FDA inspection results are not used yet.</li>
 <li>Prices come from retail pharmacies, so hospital injectables often have no price.</li>

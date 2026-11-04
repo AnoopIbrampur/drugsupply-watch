@@ -186,3 +186,12 @@ precision = the week's positive share) and the hand-written backtest rule.
 **Reporting.** Every scored onset is listed, hit or miss. Live results are never
 merged with backtest results. Results by risk band appear only after 30 scored
 onsets, because fewer than that would be mostly noise.
+
+### D9 amendment, 2026-11-04: better name mapping, before any result
+
+44 reviewed overrides (`transform/data/listing_name_overrides.csv`) now map shortage
+names that previously had no family, including two non-drug rows that are excluded.
+This changes which onsets exist, so it's recorded here. No week had been scored, and
+the one frozen file (2026-11-02) is unchanged. The scoring rules are unchanged. Families
+that turned out to be already in shortage, such as streptozocin, can't produce a false
+onset: their episodes began long before tracking did.

@@ -1,1 +1,45 @@
 listing_name,family,reason
+Lithium Oral Solution,5Z6E9K79YV|LIQUID|ORAL,only oral lithium liquid family
+"Lithium Carbonate Oral Solution, USP",5Z6E9K79YV|LIQUID|ORAL,"same listing, renamed two weeks later; lithium liquids share one family"
+"Streptozocin Powder, For Solution",5W494URQ81|INJECTION|PARENTERAL,Zanosar is the only streptozocin product
+Fluorescein Strips,TPY09G7XIR|FILM|OPHTHALMIC,fluorescein paper strips
+Sterile Water Irrigant,059QF0KO0R|IRRIGANT|IRRIGATION,water for irrigation
+Water Irrigant,059QF0KO0R|IRRIGANT|IRRIGATION,water for irrigation; same listing as Sterile Water Irrigant
+Sodium Chloride Irrigant,451W47IQ8X|IRRIGANT|IRRIGATION,sodium chloride for irrigation
+Teprotumumab-trbw,Y64GQ0KC0A|INJECTION|PARENTERAL,Tepezza; biologic suffix blocked the name match
+Sodium Phosphates Injection,22ADO53M6F+593YOG76RN|INJECTION|PARENTERAL,same family as FDA's later name for this listing; prevents a false 2023 onset
+Sodium Phosphate Injection,22ADO53M6F+593YOG76RN|INJECTION|PARENTERAL,earlier spelling of the same listing
+Caffeine Anhydrous (125mg/mL); Sodium Benzoate (125mg/mL) Injection,3G6A5W338E|INJECTION|PARENTERAL,caffeine and sodium benzoate injection
+Potassium Phosphate Injection,4J9FJ0HL51+CI71S98N1Z|INJECTION|PARENTERAL,potassium phosphates injection
+Sterile Talc Powder,7SEV7J4R1U|INJECTION|PARENTERAL,Steritalc powder (the aerosol is a separate family)
+Timolol Maleate Ophthalmic Gel Forming Solution,5JKY92S7BR|LIQUID|OPHTHALMIC,"timolol ophthalmic solution, gel-forming"
+IV Fat Emulsion,241ATL177A|INJECTION|PARENTERAL,"soybean oil emulsion (Intralipid, Nutrilipid)"
+I.V. Fat Emulsion,241ATL177A|INJECTION|PARENTERAL,"soybean oil emulsion; same listing, respelled"
+I.V. Fat Emulsion Emulsion,241ATL177A|INJECTION|PARENTERAL,"soybean oil emulsion; same listing, respelled"
+Lipid Injection,241ATL177A|INJECTION|PARENTERAL,soybean oil emulsion; earlier name of the same listing
+Lidocaine Hydrochloride (Viscous) Oral Topical Solution,98PI200987|LIQUID|ORAL,viscous lidocaine
+Lidocaine Hydrochloride Solution,98PI200987|LIQUID|ORAL,replaced the viscous listing the week of FDA's 2023 renaming
+Lidocaine Hydrochloride Anhydrous Solution,98PI200987|LIQUID|ORAL,one-week variant from the 2023 renaming
+Tiopronin (Thiola),C5W04GO61S|TABLET|ORAL,Thiola tablets; Thiola EC came later (listing ended 2016)
+"AVYCAZ® (ceftazidime and avibactam) for Injection, 2 grams/0.5 grams",7352665165+DZR1ENT301|INJECTION|PARENTERAL,Avycaz
+Erythromycin Ointment,63937KV33D|SEMISOLID|OPHTHALMIC,erythromycin ophthalmic ointment
+Epinephrine 1mg/mL (Preservative Free),YKH834O4BH|INJECTION|PARENTERAL,epinephrine injection
+Phosphate (Glycophos) Injection,YP1H63LJ2K|INJECTION|PARENTERAL,Glycophos is sodium glycerophosphate
+Lutetium Lu 177 Vipivotide Tetraxetan (Pluvicto) Injection,G6UF363ECX|INJECTION|PARENTERAL,Pluvicto
+Lutetium Lu-177 Vipivotide Tetraxetan Injection,G6UF363ECX|INJECTION|PARENTERAL,Pluvicto
+"Lutetium Lu-177 Vipivotide Tetraxetan Injection, Solution",G6UF363ECX|INJECTION|PARENTERAL,Pluvicto
+Lutetium Lu 177 Dotatate (LUTATHERA) Injection,AE221IM3BB|INJECTION|PARENTERAL,Lutathera
+Latanoprost Ophthalmic Solution 0.005per,EJ85341990|LIQUID|OPHTHALMIC,latanoprost eye drops
+Histreline Acetate Implant,H50H3S3W74|IMPLANT_DEVICE|PARENTERAL,Supprelin LA; misspelling blocked the match
+Radium RA-223 Dichloride (Xofigo) Injection,RJ00KV3VTG|INJECTION|PARENTERAL,Xofigo
+Erythrocin Lactobionate Lyophilized Powder for Injection,63937KV33D|INJECTION|PARENTERAL,erythromycin lactobionate injection
+"Succinylcholine (Anectine, Quelicin) Injection",I9L0DDD30I|INJECTION|PARENTERAL,succinylcholine chloride injection
+Technetium tc99m Exametazime Injection (Ceretec Kit),3B744AG22N|INJECTION|PARENTERAL,Ceretec
+Technetium TC-99m Sodium Pertechnetate Generator,6EW75241VU|INJECTION|PARENTERAL,"technetium generators (Technelite, Ultra-Technekow)"
+Disopyramide Phosphate (Norpace) CR,GFO928U8MQ|CAPSULE_ER|ORAL,Norpace CR capsules
+Lactated Ringers Injection,451W47IQ8X+660YQ98I10+M4I0D6VV5M+TU7HW0W0QT|INJECTION|PARENTERAL,lactated Ringer's
+Rocuronium Bromide Solution,I65MW4OFHZ|INJECTION|PARENTERAL,rocuronium is injection only
+Mometasone Furoate Monohydrate (Nasonex),8HR4QJ6DW8|AEROSOL_SPRAY|NASAL,Nasonex nasal spray
+Clindaymycin Phosphate Injection,3U02EL437C|INJECTION|PARENTERAL,clindamycin phosphate injection; FDA's typo
+TEST ADD REASON SHORTAGE,,"FDA test row, not a drug"
+LifeCare PCA™ Sterile Empty Vial and Injector,,"device supply, not a drug family"

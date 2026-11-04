@@ -85,3 +85,20 @@ def test_diluent_dropped_when_no_combined_family():
     m = ListingNameMapper(MoietyResolver(names, MOIETY), FAMILIES, overrides={})
     fam, _ = m.map("Bupivacaine Hydrochloride in 0.9per Sodium Chloride Injection")
     assert fam == "M1|INJECTION|PARENTERAL"
+
+
+def test_shipped_overrides_are_well_formed():
+    from rxradar.transform.listing_names import load_overrides
+
+    overrides = load_overrides()
+    assert len(overrides) >= 40
+    for name, family in overrides.items():
+        assert name
+        # Blank family = deliberately excluded (e.g. FDA's test row).
+        assert family == "" or family.count("|") == 2
+    assert overrides["TEST ADD REASON SHORTAGE"] == ""
+
+
+def test_blank_override_excludes_a_name():
+    m = ListingNameMapper(MoietyResolver(NAMES, MOIETY), FAMILIES, overrides={"Not A Drug": ""})
+    assert m.map("Not A Drug") == (None, "override")

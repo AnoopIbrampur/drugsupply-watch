@@ -8,7 +8,7 @@ For each drug (same ingredient, form and route), RxRadar estimates the chance of
 FDA-listed shortage in the next 90 days and explains why in plain words.
 
 - **Backtest:** a 100-drug watchlist would have flagged about 1 in 4 new shortages at least
-  a month early (random: about 1 in 45). Only about 1 in 50 flagged drug-weeks led to a
+  a month early (random: about 1 in 30). Only about 1 in 50 flagged drug-weeks led to a
   shortage, so most flagged drugs won't go short.
 - **Live track record:** each week's predictions are frozen publicly before outcomes are
   known, and scored by [rules set in advance](docs/decisions.md).

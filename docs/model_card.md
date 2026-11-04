@@ -1,6 +1,6 @@
 # Model card: RxRadar shortage-onset ranking (Phase 3 backtest)
 
-*2026-10-29. Every number below comes from `scripts/run_backtest.py`,
+*Backtest numbers refreshed 2026-11-04, after 44 reviewed name overrides corrected the labels (287 dated onsets). Every number below comes from `scripts/run_backtest.py`,
 `scripts/summarize_backtest.py` and `scripts/ablation.py` on the data
 described in [data_audit.md](data_audit.md). Nothing is tuned on test years.*
 
@@ -57,7 +57,7 @@ Known feature limitations:
 - **Leakage guard:** training uses only rows whose 90-day label was resolved
   before the cutoff (*t* + 90 days < cutoff). This is tested in
   `tests/test_backtest.py`.
-- **Size:** 795,137 test family-weeks with 1,988 positive rows, from 178 onsets
+- **Size:** 800,229 test family-weeks with 2,089 positive rows, from 186 onsets
   evaluable at a 4-week lead.
 - **Models:**
   - random;
@@ -74,31 +74,31 @@ it started? Random ≈ k / N.
 
 | universe | model | recall@50, 4w | recall@100, 4w | recall@100, 8w | recall@50, 12w |
 |---|---|---|---|---|---|
-| all families | random | 0.017 [0.000–0.039] | 0.022 [0.006–0.045] | 0.064 | 0.007 |
-| | rule | 0.090 [0.051–0.135] | 0.107 [0.062–0.152] | 0.105 | 0.085 |
-| | **logistic** | **0.124** [0.073–0.169] | **0.242** [0.180–0.303] | **0.240** | **0.137** |
-| | LightGBM | 0.107 [0.062–0.152] | 0.208 [0.152–0.264] | 0.193 | 0.105 |
-| generic or injectable | random | 0.026 | 0.033 | 0.081 | 0.015 |
-| | rule | 0.092 | 0.118 | 0.115 | 0.092 |
-| | **logistic** | **0.144** [0.092–0.203] | **0.281** [0.209–0.353] | **0.284** | **0.160** |
-| | LightGBM | 0.137 [0.085–0.190] | 0.242 [0.176–0.314] | 0.223 | 0.115 |
+| all families | random | 0.011 [0.000–0.027] | 0.032 [0.011–0.059] | 0.028 | 0.006 |
+| | rule | 0.054 [0.022–0.086] | 0.075 [0.038–0.118] | 0.079 | 0.062 |
+| | **logistic** | **0.129** [0.086–0.177] | **0.231** [0.172–0.290] | **0.219** | **0.130** |
+| | LightGBM | 0.118 [0.070–0.167] | 0.204 [0.145–0.258] | 0.213 | 0.106 |
+| generic or injectable | random | 0.019 | 0.056 | 0.071 | 0.022 |
+| | rule | 0.056 | 0.087 | 0.084 | 0.066 |
+| | **logistic** | **0.150** [0.094–0.206] | **0.269** [0.200–0.331] | **0.253** | **0.153** |
+| | LightGBM | 0.138 [0.087–0.194] | 0.237 [0.175–0.300] | 0.247 | 0.117 |
 
 **Reading:** a 100-family watchlist from the logistic model would have flagged
-about **1 in 4** new shortages a month or more ahead, against about 1 in 45 for
+about **1 in 4** new shortages a month or more ahead, against about 1 in 30 for
 random. It still misses three quarters of them.
 
 ### Row level and weekly precision (all families)
 
 | model | PR-AUC | Brier | precision@25 | precision@50 | precision@100 |
 |---|---|---|---|---|---|
-| random | 0.0025 | 0.333 | 0.003 | 0.003 | 0.003 |
-| rule | 0.0058 | n/a | 0.020 [0.012–0.029] | 0.013 | 0.008 |
-| logistic | **0.0099** | 0.0026 | 0.018 | **0.019** [0.013–0.026] | **0.018** |
-| LightGBM | 0.0093 | 0.0026 | **0.023** [0.012–0.034] | 0.016 | 0.015 |
-| *ceiling* (all positives ranked first) | | | 0.298 | 0.149 | 0.075 |
+| random | 0.0026 | 0.333 | 0.003 | 0.003 | 0.003 |
+| rule | 0.0056 | n/a | 0.018 [0.008–0.028] | 0.009 | 0.006 |
+| logistic | **0.0099** | 0.0027 | 0.020 | **0.020** [0.013–0.028] | **0.018** |
+| LightGBM | 0.0086 | 0.0027 | **0.021** [0.012–0.032] | 0.018 | 0.016 |
+| *ceiling* (all positives ranked first) | | | 0.311 | 0.155 | 0.078 |
 
 - The base rate is 0.25%. The best models reach about 4× that in PR-AUC and
-  about 6× random in precision@50.
+  about 7× random in precision@50.
 - Precision@50 is still about 8× below its ceiling: **about 1 in 50 flagged
   family-weeks is followed by a new shortage within 90 days.**
 - For context, the Berkeley project's ~0.1% precision (4-week horizon, unknown
@@ -109,10 +109,10 @@ random. It still misses three quarters of them.
 
 | | 2017 | 2020 | 2021 | 2022 | 2023 | 2024 | 2026 |
 |---|---|---|---|---|---|---|---|
-| onsets | 31 | 38 | 13 | 35 | 35 | 6 | 5 |
-| logistic | 0.13 | 0.24 | 0.46 | 0.14 | 0.37 | 0.17 | 0.20 |
-| LightGBM | 0.10 | 0.13 | 0.46 | 0.17 | 0.26 | 0.33 | 0.20 |
-| rule | 0.16 | 0.08 | 0.00 | 0.14 | 0.11 | 0.50 | 0.00 |
+| onsets | 33 | 40 | 15 | 37 | 35 | 6 | 5 |
+| logistic | 0.15 | 0.23 | 0.47 | 0.11 | 0.37 | 0.17 | 0.20 |
+| LightGBM | 0.15 | 0.15 | 0.47 | 0.16 | 0.20 | 0.33 | 0.40 |
+| rule | 0.06 | 0.05 | 0.00 | 0.11 | 0.09 | 0.33 | 0.00 |
 
 Year-to-year swings are large, and 2024 and 2026 have too few onsets to say
 anything.
@@ -121,19 +121,19 @@ anything.
 
 | features | # | PR-AUC | precision@50 | recall@100, 4w |
 |---|---|---|---|---|
-| static only (form group, injectable, generic, # ingredients) | 4 | 0.0077 | 0.010 | 0.152 [0.101–0.202] |
-| + shortage history | 14 | 0.0071 | 0.014 | 0.163 |
-| + supply structure | 24 | 0.0077 | 0.017 | 0.197 |
-| + recalls | 28 | 0.0087 | 0.016 | 0.185 |
-| + prices (all) | 35 | 0.0093 | 0.016 | 0.208 [0.152–0.264] |
-| all except history | 25 | 0.0074 | 0.014 | 0.185 |
+| static only (form group, injectable, generic, # ingredients) | 4 | 0.0080 | 0.011 | 0.167 [0.118–0.220] |
+| + shortage history | 14 | 0.0059 | 0.014 | 0.151 |
+| + supply structure | 24 | 0.0067 | 0.017 | 0.167 |
+| + recalls | 28 | 0.0070 | 0.017 | 0.177 |
+| + prices (all) | 35 | 0.0086 | 0.018 | 0.204 [0.145–0.258] |
+| all except history | 25 | 0.0072 | 0.016 | 0.167 |
 
 **Honest reading:**
 - Most of the measurable signal is *what kind of drug it is*: sterile
   injectable, multi-source generic, form.
 - Supply, recall and price features nudge every metric up a little, and the
   full model is best on PR-AUC and recall. But the confidence intervals overlap
-  at every step. **With ~180 evaluable onsets, this backtest cannot show that
+  at every step. **With ~190 evaluable onsets, this backtest cannot show that
   the supply-side signals help.** It can only say they don't hurt and point
   the right way.
 - **LightGBM does not beat the 12-feature logistic regression.**
@@ -142,8 +142,8 @@ anything.
 
 | | mean predicted | observed | top 0.1% of scores: predicted / observed |
 |---|---|---|---|
-| logistic | 0.0035 | 0.0025 | 0.296 / 0.019 |
-| LightGBM | 0.0023 | 0.0025 | 0.232 / 0.067 |
+| logistic | 0.0036 | 0.0026 | 0.337 / 0.019 |
+| LightGBM | 0.0024 | 0.0026 | 0.268 / 0.034 |
 
 - Both models are badly **overconfident at the top**. Raw scores must not be
   shown as probabilities.
@@ -169,8 +169,9 @@ anything.
   treatment guidance.
 - Labels come from FDA's public list only. Shortages FDA never listed (e.g.
   ones only ASHP tracks) are invisible here, by design.
-- 9.7% of names ever listed as Current don't map to a family, mostly
-  multi-ingredient product classes. Their onsets are not in the labels.
+- 3.3% of names ever listed as Current don't map to a family, mostly
+  multi-ingredient product classes (`docs/unmapped_listing_names.csv`). Their
+  onsets are not in the labels.
 
 ## Production model and calibration (Phase 4)
 
@@ -181,25 +182,25 @@ anything.
 
 **Calibration:** Platt scaling, chosen by a walk-forward check. Each test year
 is calibrated only on earlier years' out-of-sample scores
-(`model/calibrate.py`; 2020–2026, 696,400 rows):
+(`model/calibrate.py`; 2020–2026, 701,607 rows):
 
 | method | Brier | mean predicted | observed | top 0.1%: predicted / observed |
 |---|---|---|---|---|
-| raw | 0.00243 | 0.0035 | 0.0024 | 0.135 / 0.019 |
-| **Platt** | **0.00241** | 0.0033 | 0.0024 | **0.030 / 0.037** |
-| isotonic | 0.00241 | 0.0036 | 0.0024 | 0.023 / 0.015 |
+| raw | 0.00252 | 0.0036 | 0.0025 | 0.115 / 0.041 |
+| **Platt** | **0.00251** | 0.0035 | 0.0025 | **0.026 / 0.019** |
+| isotonic | 0.00251 | 0.0038 | 0.0025 | 0.028 / 0.000 |
 
 Reliability for Platt, by predicted-probability bin:
 
 | bin | predicted | observed |
 |---|---|---|
-| 0.5–1% | 0.67% | 0.76% |
-| 1–2% | 1.33% | 1.86% |
-| 2–5% | 2.46% | 2.68% |
+| 0.5–1% | 0.66% | 0.66% |
+| 1–2% | 1.34% | 1.82% |
+| 2–5% | 2.34% | 3.01% |
 
-- Brier is a near tie. Platt wins on reliability across 0.5–5%, which is the
-  range the watchlist shows. Isotonic over-predicts the 0.5–1% bin (0.66% vs
-  0.30%).
+- Brier is a near tie. Platt is well behaved across 0.5–5%, the range the
+  watchlist shows, though it under-predicts somewhat above 1%. Isotonic's top
+  0.1% claimed 2.8% and had no positives at all.
 - After calibration the highest risks are only a few percent. So the site shows
   **bands relative to a typical family** (base rate 0.25% per 90 days):
   high ≥ 8×, elevated 4–8×, moderate 2–4×, typical < 2×.
