@@ -1,19 +1,21 @@
 # RxRadar
 
-A public early-warning system for US drug shortages. For each drug family
-(active ingredient + dosage form + route), RxRadar will estimate the chance that
-a new FDA-listed shortage starts in the next 90 days and explain why.
+An early-warning watchlist for new US drug shortages, built only from public FDA and
+Medicaid data. **[See the live site](https://anoopibrampur.github.io/rxradar/)**, updated
+nightly, or read the **[case study](docs/case_study.md)**.
 
-**Live:** https://anoopibrampur.github.io/rxradar/ (rebuilt nightly by GitHub Actions).
+For each drug (same ingredient, form and route), RxRadar estimates the chance of a new
+FDA-listed shortage in the next 90 days and explains why in plain words.
 
-**Status: Phase 4 deployed.** Point-in-time features, baselines and a
-walk-forward backtest: see [docs/model_card.md](docs/model_card.md). The best
-model (a 12-feature logistic regression) would have put ~1 in 4 new shortages
-in a 100-drug watchlist a month ahead (random: ~1 in 45), but only ~1 in 50
-flagged family-weeks is followed by a shortage. `uv run rxradar site` builds the
-static site into `public/`. Data
-details: [docs/data_audit.md](docs/data_audit.md); decisions:
-[docs/decisions.md](docs/decisions.md).
+- **Backtest:** a 100-drug watchlist would have flagged about 1 in 4 new shortages at least
+  a month early (random: about 1 in 45). Only about 1 in 50 flagged drug-weeks led to a
+  shortage, so most flagged drugs won't go short.
+- **Live track record:** each week's predictions are frozen publicly before outcomes are
+  known, and scored by [rules set in advance](docs/decisions.md).
+- **Runs at $0:** nightly GitHub Actions, GitHub Pages, free government data.
+
+Details: [model card](docs/model_card.md), [data audit](docs/data_audit.md),
+[decisions](docs/decisions.md).
 
 ## Ground rules
 - Only public US government data (openFDA, FDA, data.medicaid.gov), plus Internet
