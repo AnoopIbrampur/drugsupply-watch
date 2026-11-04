@@ -88,3 +88,20 @@ def test_interrupted_label_is_redone_without_refetching_finished_versions(client
     client.calls.clear()
     dailymed.ingest(client, SELECTED, 2026)
     assert len(client.calls) == 2  # only search + history
+
+
+def test_link_rows_expand_factories_and_keep_empty_versions():
+    from rxradar.transform.label_factories import link_rows
+
+    labels = [{"family": "F", "set_id": "S1"}, {"family": "G", "set_id": "S1"}]
+    versions = [
+        {"set_id": "S1", "version": 1, "published": "2020-01-01", "duns": ["111", "222"]},
+        {"set_id": "S1", "version": 2, "published": "2021-01-01", "duns": []},
+        {"set_id": "S1", "version": 3, "published": "2022-01-01", "duns": ["999"]},
+    ]
+    df = link_rows(labels, versions, {"111": {"7"}, "222": {"8", "9"}})
+    f = df[df.family == "F"]
+    assert sorted(f[f.version == 1].fei) == ["7", "8", "9"]
+    assert f[f.version == 2].fei.isna().all() and len(f[f.version == 2]) == 1
+    assert f[f.version == 3].fei.isna().all()  # DUNS with no FEI: unknown, not dropped
+    assert len(df[df.family == "G"]) == len(f)  # one label can serve two families
