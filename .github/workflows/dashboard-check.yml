@@ -1,0 +1,22 @@
+name: dashboard-check
+# Manual test of the FDA Data Dashboard credentials. Logs status and counts only.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --locked
+      - run: uv run rxradar dashboard-check
+        env:
+          FDA_DD_USER: ${{ secrets.FDA_DD_USER }}
+          FDA_DD_KEY: ${{ secrets.FDA_DD_KEY }}

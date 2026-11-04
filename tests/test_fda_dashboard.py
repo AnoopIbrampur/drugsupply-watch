@@ -55,3 +55,20 @@ def test_error_status_raises():
         fda_dashboard.fetch_endpoint(
             "compliance_actions", "u", "k", transport=httpx.MockTransport(handler)
         )
+
+
+def test_check_connection_reports_counts_and_never_the_key(monkeypatch):
+    monkeypatch.setenv("FDA_DD_USER", "me@example.com")
+    monkeypatch.setenv("FDA_DD_KEY", "SECRET-KEY")
+
+    def handler(req):
+        assert req.headers["Authorization-Key"] == "SECRET-KEY"
+        return httpx.Response(
+            200,
+            json={"statuscode": 400, "totalrecordcount": 7, "result": [{"FEINumber": "1"}]},
+        )
+
+    report = fda_dashboard.check_connection(transport=httpx.MockTransport(handler))
+    assert report["inspections_classifications"]["total_records"] == 7
+    assert report["compliance_actions"]["columns_returned"] == ["FEINumber"]
+    assert "SECRET-KEY" not in json.dumps(report)

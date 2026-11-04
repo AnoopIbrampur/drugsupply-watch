@@ -93,6 +93,7 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("site", help="build the static site into public/")
     sub.add_parser("track", help="freeze this week if new, rescore the track record")
     sub.add_parser("nightly", help="ingest small sources, rebuild, score, build site")
+    sub.add_parser("dashboard-check", help="test FDA Data Dashboard credentials")
     p_state = sub.add_parser("state", help="pack/unpack the compact state archive")
     p_state.add_argument("action", choices=["pack", "unpack"])
     p_state.add_argument("path")
@@ -126,6 +127,15 @@ def main(argv: list[str] | None = None) -> None:
 
         scores = json.loads((site_data_dir() / "scores.json").read_text())
         update_track_record(scores, site_data_dir())
+    elif args.cmd == "dashboard-check":
+        import json
+
+        from rxradar.ingest import fda_dashboard
+
+        report = fda_dashboard.check_connection()
+        print(json.dumps(report, indent=2))
+        ok = all(r["statuscode"] == fda_dashboard.STATUS_SUCCESS for r in report.values())
+        raise SystemExit(0 if ok else 1)
     elif args.cmd == "nightly":
         from rxradar.pipeline import nightly
 

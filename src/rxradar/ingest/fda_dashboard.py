@@ -128,6 +128,47 @@ def fetch_endpoint(
     return rows
 
 
+def check_connection(transport: httpx.BaseTransport | None = None) -> dict[str, dict]:
+    """Ask for one row from each endpoint and report status and record counts.
+
+    For confirming credentials work. It returns nothing derived from them, so
+    the result is safe to log.
+    """
+    user, key = credentials()
+    headers = {
+        "Authorization-User": user,
+        "Authorization-Key": key,
+        "Content-Type": "application/json",
+        "User-Agent": USER_AGENT,
+    }
+    report = {}
+    with httpx.Client(timeout=120, transport=transport, headers=headers) as client:
+        for endpoint, spec in ENDPOINTS.items():
+            body = {
+                "start": 1,
+                "rows": 1,
+                "sort": spec["sort"],
+                "sortorder": "asc",
+                "returntotalcount": True,
+                "filters": spec["filters"],
+                "columns": spec["columns"],
+            }
+            resp = client.post(BASE_URL + endpoint, json=body)
+            try:
+                payload = resp.json()
+            except ValueError:
+                payload = {}
+            rows = payload.get("result") or []
+            report[endpoint] = {
+                "http_status": resp.status_code,
+                "statuscode": payload.get("statuscode"),
+                "message": payload.get("message"),
+                "total_records": payload.get("totalrecordcount"),
+                "columns_returned": sorted(rows[0]) if rows else [],
+            }
+    return report
+
+
 def ingest(transport: httpx.BaseTransport | None = None) -> Path:
     user, key = credentials()
     out = raw_snapshot_dir("fda_dashboard")
