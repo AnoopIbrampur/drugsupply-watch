@@ -235,6 +235,7 @@ def build_product_family_table() -> pd.DataFrame:
 
     keep = [
         "PRODUCTID", "PRODUCTNDC", "LABELERNAME", "PROPRIETARYNAME", "NONPROPRIETARYNAME",
+        "PHARM_CLASSES",
         "APPLICATIONNUMBER",
         "MARKETINGCATEGORYNAME", "STARTMARKETINGDATE", "ENDMARKETINGDATE", "NDC_EXCLUDE_FLAG",
         "listing", "family", "family_source",

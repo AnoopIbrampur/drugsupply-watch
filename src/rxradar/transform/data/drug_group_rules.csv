@@ -1,0 +1,222 @@
+pattern,group
+Contrast Agent,Imaging & diagnostics
+Radioactive Diagnostic,Imaging & diagnostics
+Diagnostic,Imaging & diagnostics
+Imaging Agent,Imaging & diagnostics
+Skin Test,Imaging & diagnostics
+Cardiac Stress Test,Imaging & diagnostics
+Tuberculosis Skin,Imaging & diagnostics
+Allergenic Extract,Allergy & breathing
+Chemical Allergen,Allergy & breathing
+Opioid Agonist,Anesthesia & pain
+Partial Opioid,Anesthesia & pain
+Antidote,Antidotes & reversal agents
+Reversal Agent,Antidotes & reversal agents
+Opioid Antagonist,Antidotes & reversal agents
+Benzodiazepine Antagonist,Antidotes & reversal agents
+Chelator,Antidotes & reversal agents
+Cholinesterase Reactivator,Antidotes & reversal agents
+Decorporation,Antidotes & reversal agents
+Local Anesthetic,Anesthesia & pain
+General Anesthetic,Anesthesia & pain
+Neuromuscular Blocker,Anesthesia & pain
+Opioid,Anesthesia & pain
+Nonsteroidal Anti-inflammatory,Anesthesia & pain
+Cyclooxygenase Inhibitor,Anesthesia & pain
+Antibacterial,Infections
+Antimicrobial,Infections
+Antifungal,Infections
+Antiviral,Infections
+Antimycobacterial,Infections
+Antimalarial,Infections
+Antiprotozoal,Infections
+Antiparasitic,Infections
+Anthelmintic,Infections
+Antileishmanial,Infections
+Pediculicide,Infections
+Ectoparasiticide,Infections
+Virus,Infections
+DNA Polymerase Inhibitor,Infections
+Influenza,Infections
+beta Lactamase Inhibitor,Infections
+Tetracycline-class,Infections
+Macrolide,Infections
+Neuraminidase Inhibitor,Infections
+Polymerase Acidic Endonuclease,Infections
+Protease Inhibitor,Infections
+Alkylating,Cancer
+Antimetabolite Immunosuppressant,Immune & inflammation
+Antimetabolite,Cancer
+Nucleoside Metabolic Inhibitor,Cancer
+Folate Analog Metabolic Inhibitor,Cancer
+Anthracycline,Cancer
+Topoisomerase Inhibitor,Cancer
+Microtubule Inhibitor,Cancer
+Tubulin Inhibiting,Cancer
+Vinca Alkaloid,Cancer
+Platinum-based,Cancer
+Programmed Death,Cancer
+CTLA-4,Cancer
+HER2,Cancer
+Proteasome Inhibitor,Cancer
+Histone Deacetylase,Cancer
+Poly(ADP-Ribose),Cancer
+Hedgehog Pathway,Cancer
+Aromatase Inhibitor,Cancer
+Androgen Receptor Inhibitor,Cancer
+Estrogen Receptor Antagonist,Cancer
+Radioligand Therapeutic,Cancer
+Radioactive alpha-Particle,Cancer
+Radioactive Therapeutic,Cancer
+Actinomycin,Cancer
+Isocitrate Dehydrogenase,Cancer
+BCL-2,Cancer
+Nuclear Export,Cancer
+Menin Inhibitor,Cancer
+Asparagine-specific Enzyme,Cancer
+Methylating Agent,Cancer
+Cytoprotective Agent,Cancer
+CD19-directed,Cancer
+CD20-directed,Cancer
+CD22-directed,Cancer
+CD30-directed,Cancer
+CD33-directed,Cancer
+CD38-directed,Cancer
+Bispecific,Cancer
+Epidermal Growth Factor Receptor,Cancer
+Vascular Endothelial Growth Factor,Cancer
+Janus Kinase,Immune & inflammation
+Tyrosine Kinase 2,Immune & inflammation
+Kinase Inhibitor,Cancer
+Immunosuppressant,Immune & inflammation
+Tumor Necrosis Factor,Immune & inflammation
+Interleukin,Immune & inflammation
+Interferon,Immune & inflammation
+Complement,Immune & inflammation
+Antirheumatic,Immune & inflammation
+Immunoglobulin,Immune & inflammation
+Selective T Cell,Immune & inflammation
+Sphingosine 1-phosphate,Nervous system
+Anti-epileptic,Nervous system
+Barbiturate,Nervous system
+Atypical Antipsychotic,Mental health
+Typical Antipsychotic,Mental health
+Mood Stabilizer,Mental health
+Serotonin Reuptake,Mental health
+Serotonin and Norepinephrine Reuptake,Mental health
+Norepinephrine Reuptake,Mental health
+Tricyclic Antidepressant,Mental health
+Monoamine Oxidase Inhibitor,Mental health
+Aminoketone,Mental health
+Benzodiazepine,Mental health
+Central Nervous System Stimulant,Mental health
+Dopamine Agonist,Nervous system
+Dopaminergic Agonist,Nervous system
+Catechol-O-Methyltransferase,Nervous system
+Monoamine Oxidase Type B,Nervous system
+Serotonin-1b,Nervous system
+Calcitonin Gene-related Peptide,Nervous system
+Cholinesterase Inhibitor,Nervous system
+N-methyl-D-aspartate,Nervous system
+Ergot,Nervous system
+Muscle Relaxant,Nervous system
+Orexin,Nervous system
+Melatonin,Nervous system
+gamma-Aminobutyric Acid,Nervous system
+Acetylcholine Release Inhibitor,Nervous system
+Anti-coagulant,Blood & clotting
+Heparin,Blood & clotting
+Factor Xa,Blood & clotting
+Direct Thrombin,Blood & clotting
+Human Blood Coagulation Factor,Blood & clotting
+Blood Coagulation Factor,"Vitamins, nutrition & electrolytes"
+Factor VIII,Blood & clotting
+Platelet,Blood & clotting
+Vitamin K Antagonist,Blood & clotting
+Antifibrinolytic,Blood & clotting
+Iron Replacement,Blood & clotting
+Erythropoiesis,Blood & clotting
+Leukocyte Growth,Blood & clotting
+Thrombopoietin,Blood & clotting
+Hematopoietic Stem Cell,Blood & clotting
+Plasma Kallikrein,Blood & clotting
+beta-Adrenergic Blocker,Heart & blood pressure
+Angiotensin,Heart & blood pressure
+Calcium Channel Blocker,Heart & blood pressure
+Antiarrhythmic,Heart & blood pressure
+Cardiac Glycoside,Heart & blood pressure
+Diuretic,Heart & blood pressure
+Nitrate Vasodilator,Heart & blood pressure
+Vasodilator,Heart & blood pressure
+alpha-Adrenergic Blocker,Heart & blood pressure
+Central alpha-2,Heart & blood pressure
+Catecholamine,Heart & blood pressure
+alpha-Adrenergic Agonist,Heart & blood pressure
+alpha-1 Adrenergic Agonist,Heart & blood pressure
+beta-Adrenergic Agonist,Heart & blood pressure
+Vasoconstrictor,Heart & blood pressure
+HMG-CoA,Heart & blood pressure
+PCSK9,Heart & blood pressure
+Endothelin Receptor,Heart & blood pressure
+Phosphodiesterase 3,Heart & blood pressure
+Aldosterone Antagonist,Heart & blood pressure
+Prostacycl,Heart & blood pressure
+Anti-anginal,Heart & blood pressure
+Insulin,Hormones & diabetes
+Biguanide,Hormones & diabetes
+Sulfonylurea,Hormones & diabetes
+Thiazolidinedione,Hormones & diabetes
+GLP-1,Hormones & diabetes
+Dipeptidyl Peptidase 4,Hormones & diabetes
+Sodium-Glucose Cotransporter,Hormones & diabetes
+Corticosteroid,Hormones & diabetes
+Estrogen,Hormones & diabetes
+Progestin,Hormones & diabetes
+Progesterone,Hormones & diabetes
+Androgen,Hormones & diabetes
+Thyroxine,Hormones & diabetes
+Triiodothyronine,Hormones & diabetes
+Gonadotropin,Hormones & diabetes
+Vasopressin,Hormones & diabetes
+Somatostatin,Hormones & diabetes
+Adrenocorticotropic,Hormones & diabetes
+Bisphosphonate,Hormones & diabetes
+Growth Hormone,Hormones & diabetes
+Oxytocic,Hormones & diabetes
+Antihypoglycemic,Hormones & diabetes
+Thyroid Hormone Synthesis,Hormones & diabetes
+Proton Pump,Stomach & bowel
+Histamine-2,Stomach & bowel
+Serotonin-3,Stomach & bowel
+Substance P/Neurokinin-1,Stomach & bowel
+Antiemetic,Stomach & bowel
+Aminosalicylate,Stomach & bowel
+Bile Acid,Stomach & bowel
+Stimulant Laxative,Stomach & bowel
+Antidiarrheal,Stomach & bowel
+Guanylate Cyclase-C,Stomach & bowel
+Dopamine-2 Receptor Antagonist,Stomach & bowel
+beta2-Adrenergic Agonist,Allergy & breathing
+Histamine-1,Allergy & breathing
+Antihistamine,Allergy & breathing
+Leukotriene,Allergy & breathing
+Methylxanthine,Allergy & breathing
+Mast Cell,Allergy & breathing
+Mucolytic,Allergy & breathing
+Surfactant,Allergy & breathing
+Anti-IgE,Allergy & breathing
+Cystic Fibrosis,Allergy & breathing
+Antitussive,Allergy & breathing
+Expectorant,Allergy & breathing
+Vitamin,"Vitamins, nutrition & electrolytes"
+Potassium Salt,"Vitamins, nutrition & electrolytes"
+Amino Acid,"Vitamins, nutrition & electrolytes"
+Lipid Emulsion,"Vitamins, nutrition & electrolytes"
+Omega-3,"Vitamins, nutrition & electrolytes"
+Calcium,"Vitamins, nutrition & electrolytes"
+Plasma Volume,"Vitamins, nutrition & electrolytes"
+Nicotinic Acid,"Vitamins, nutrition & electrolytes"
+Osmotic Laxative,"Vitamins, nutrition & electrolytes"
+Phosphate Binder,"Vitamins, nutrition & electrolytes"
+Folate Analog,"Vitamins, nutrition & electrolytes"
+Medium-chain Triglyceride,"Vitamins, nutrition & electrolytes"

@@ -1,0 +1,33 @@
+name_contains,group,reason
+LEVETIRACETAM,Nervous system,no class data
+CYCLOPHOSPHAMIDE,Cancer,no class data
+LEUCOVORIN,Cancer,chemotherapy support; class says folate analog
+PALIFERMIN,Cancer,mucositis in chemotherapy
+METHOHEXITAL,Anesthesia & pain,anesthetic; class says barbiturate
+SELENI,"Vitamins, nutrition & electrolytes",trace element
+ZINC,"Vitamins, nutrition & electrolytes",trace element
+CHROMI,"Vitamins, nutrition & electrolytes",trace element
+CUPRIC,"Vitamins, nutrition & electrolytes",trace element
+CYSTEINE,"Vitamins, nutrition & electrolytes",parenteral nutrition additive
+MAGNESIUM SULFATE,"Vitamins, nutrition & electrolytes",electrolyte
+SODIUM ACETATE,"Vitamins, nutrition & electrolytes",electrolyte
+SODIUM BICARBONATE,"Vitamins, nutrition & electrolytes",electrolyte
+FOLIC ACID,"Vitamins, nutrition & electrolytes",vitamin
+TROMETHAMINE,"Vitamins, nutrition & electrolytes",acid-base correction
+GLYCOPHOS,"Vitamins, nutrition & electrolytes",phosphate source
+ATROPINE,Antidotes & reversal agents,emergency use
+METHYLENE BLUE,Antidotes & reversal agents,methemoglobinemia
+DIMERCAPROL,Antidotes & reversal agents,chelator
+PHYSOSTIGMINE,Antidotes & reversal agents,anticholinergic toxicity
+VASOPRESSIN,Heart & blood pressure,vasopressor use
+PAPAVERINE,Heart & blood pressure,vasodilator
+ACETAZOLAMIDE,Heart & blood pressure,diuretic
+PROCHLORPERAZINE,Stomach & bowel,mainly antiemetic
+PROMETHAZINE,Stomach & bowel,mainly antiemetic
+RANITIDINE,Stomach & bowel,H2 blocker
+INDOCYANINE,Imaging & diagnostics,diagnostic dye
+SINCALIDE,Imaging & diagnostics,diagnostic agent
+ETHIODIZED,Imaging & diagnostics,contrast agent
+LETERMOVIR,Infections,antiviral
+CONIVAPTAN,Hormones & diabetes,vasopressin antagonist
+RILUZOLE,Nervous system,ALS treatment

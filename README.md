@@ -12,6 +12,8 @@ FDA-listed shortage in the next 90 days and explains why in plain words.
   shortage, so most flagged drugs won't go short.
 - **Live track record:** each week's predictions are frozen publicly before outcomes are
   known, and scored by [rules set in advance](docs/decisions.md).
+- **Useful week to week:** what changed this week, filters across all ~3,300 drugs, and a
+  fragile-supply page of plain facts.
 - **Runs at $0:** nightly GitHub Actions, GitHub Pages, free government data.
 
 Details: [model card](docs/model_card.md), [data audit](docs/data_audit.md),

@@ -161,12 +161,25 @@ def reason_text(feature: str, row: pd.Series) -> str | None:
     return None
 
 
+# True of thousands of drugs at once, so they're shown as context, not as reasons.
+DRUG_TYPE_FEATURES = ("injectable", "multisource_generic")
+
+
+def type_context(row: pd.Series) -> str | None:
+    if row.get("injectable"):
+        return "Sterile injectables are in shortage more often than other drugs."
+    return None
+
+
 def top_reasons(contrib: pd.Series, row: pd.Series, n: int = 3) -> list[str]:
-    """Up to n sentences for the features that raised risk the most."""
+    """Up to n sentences for this drug's own signals that raised risk the most.
+    May be empty: then its risk reflects its drug type, and the site says so."""
     out = []
     for feature, c in contrib.sort_values(ascending=False).items():
         if c <= 0 or len(out) >= n:
             break
+        if feature in DRUG_TYPE_FEATURES:
+            continue
         text = reason_text(feature, row)
         if text:
             out.append(text)

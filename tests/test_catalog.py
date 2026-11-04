@@ -47,3 +47,46 @@ def test_fda_percent_encoding_is_restored():
     assert clean_fda_name("Sodium Chloride 0.9per Injection") == "Sodium Chloride 0.9% Injection"
     assert clean_fda_name("Nitroglycerin in 5chr(37) Dextrose") == "Nitroglycerin in 5% Dextrose"
     assert clean_fda_name("Peroxide Superior") == "Peroxide Superior"  # 'per' inside words stays
+
+
+def test_drug_groups():
+    from rxradar.site.catalog import drug_group
+
+    assert drug_group("M|TABLET|ORAL", "Cephalosporin Antibacterial [EPC]") == "Infections"
+    assert drug_group("M|LIQUID|OPHTHALMIC", "Cephalosporin Antibacterial [EPC]") == "Eye"
+    assert drug_group("M|INJECTION|PARENTERAL", "", "CYCLOPHOSPHAMIDE") == "Cancer"
+    assert drug_group("M|INJECTION|PARENTERAL", "", "SODIUM CHLORIDE").startswith("Vitamins")
+    mix = "Vitamin C [EPC], Opioid Agonist [EPC]"
+    assert drug_group("A+B+C+D+E|TABLET|ORAL", mix).startswith("Vitamins")
+    assert drug_group("M|TABLET|ORAL", "Something Unknown [EPC]") == "Other"
+
+
+def test_calcium_salts_are_not_clotting_drugs():
+    from rxradar.site.catalog import drug_group
+
+    inj = "M|INJECTION|PARENTERAL"
+    assert drug_group(inj, "Blood Coagulation Factor [EPC]").startswith("Vitamins")
+    assert drug_group(inj, "Human Blood Coagulation Factor [EPC]") == "Blood & clotting"
+
+
+def test_lost_companies_ignores_renames_and_full_delisting():
+    from rxradar.site.catalog import lost_companies
+
+    old = pd.DataFrame(
+        {
+            "family": [INJ, INJ, TAB],
+            "LABELERNAME": ["Hikma Pharmaceuticals", "Gone Labs Inc.", "Only Co"],
+        }
+    )
+    new = pd.DataFrame({"family": [INJ], "LABELERNAME": ["Hikma Pharmaceuticals USA Inc."]})
+    assert lost_companies(old, new) == {INJ: ["Gone Labs Inc."]}
+
+
+def test_same_company_in_two_spellings_counts_once():
+    from rxradar.site.catalog import lost_companies
+
+    old = pd.DataFrame(
+        {"family": [INJ, INJ, INJ], "LABELERNAME": ["ENDO USA, Inc.", "Endo USA, Inc.", "Keep"]}
+    )
+    new = pd.DataFrame({"family": [INJ], "LABELERNAME": ["Keep"]})
+    assert len(lost_companies(old, new)[INJ]) == 1

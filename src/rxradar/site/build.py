@@ -5,10 +5,12 @@ home page. Every value is HTML-escaped. Pages:
 - index.html: top-50 watchlist, band legend, search over every family;
 - drug/<slug>.html: one page per family (risk, reasons, 2-year history
   sparkline, makers and other forms of the same ingredient);
+- all.html: search and filter every family;
+- fragile.html: drugs with few listed companies, or that recently lost one;
 - shortages.html: families on FDA's shortage list now (not ranked);
 - track-record.html: live results from frozen predictions;
 - about.html: method, backtest results, limits, sources;
-- feed.xml: RSS for families entering the top 50 or moving up a band.
+- feed.xml: RSS for risk-band rises and big rank jumps.
 
 Every page says: supply risk only, not clinical advice, and most flagged
 drugs will not go short.
@@ -24,10 +26,13 @@ import shutil
 from pathlib import Path
 from xml.sax.saxutils import escape as xml_escape
 
-from rxradar.model.production import BANDS, BASE_RATE, band
+from rxradar.model.production import BANDS, BASE_RATE
 from rxradar.track import KS, MIN_ONSETS_FOR_BANDS
 
 WATCHLIST_SIZE = 50
+FRAGILE_LIMIT = 300
+LOST_COMPANY_MAX_LEFT = 3
+FORM_FILTERS = ("Injection", "Tablet", "Capsule", "Liquid", "Other")
 REPO_URL = "https://github.com/AnoopIbrampur/rxradar"
 SITE_TITLE = "RxRadar"
 DISCLAIMER = (
@@ -67,7 +72,8 @@ def page(title: str, body: str, root: str = "", freshness: dict | None = None) -
 <link rel="alternate" type="application/rss+xml" title="RxRadar watchlist" href="{root}feed.xml">
 </head><body>
 <header><a class="brand" href="{root}index.html">{SITE_TITLE}</a>
-<nav><a href="{root}index.html">Watchlist</a><a href="{root}shortages.html">In shortage now</a>
+<nav><a href="{root}index.html">Watchlist</a><a href="{root}all.html">All drugs</a>
+<a href="{root}fragile.html">Fragile supply</a><a href="{root}shortages.html">In shortage now</a>
 <a href="{root}track-record.html">Track record</a><a href="{root}about.html">Method &amp;
 limits</a><a href="{root}feed.xml">RSS</a></nav></header>
 <main>
@@ -124,6 +130,41 @@ def rank_change(e: dict) -> str:
     return f"<span class='{'up' if d > 0 else 'down'}'>{'▲' if d > 0 else '▼'}{abs(d)}</span>"
 
 
+def main_reason(e: dict) -> str:
+    return e["reasons"][0] if e["reasons"] else "Drug type only"
+
+
+def drug_link(item: dict, root: str = "") -> str:
+    return f"<a href='{root}drug/{esc(item['slug'])}.html'>{esc(item['name'])}</a>"
+
+
+def changes_section(changes: dict | None) -> str:
+    """This week's real news. Small moves around rank 50 are left out."""
+    if changes is None:
+        return ""
+    groups = [
+        ("New FDA-listed shortages", changes["new_shortages"], lambda c: ""),
+        ("No longer on FDA's list", changes["resolved_shortages"], lambda c: ""),
+        (
+            "Moved up a risk band",
+            changes["moved_up_band"],
+            lambda c: f" ({esc(c['from'])} to {esc(c['to'])})",
+        ),
+        ("Big jumps in rank", changes["big_jumps"], lambda c: f" (#{c['from']} to #{c['to']})"),
+    ]
+    blocks = "".join(
+        f"<div><h3>{esc(title)}</h3><ul>"
+        + "".join(f"<li>{drug_link(c)}{extra(c)}</li>" for c in items[:8])
+        + "</ul>"
+        + (f"<p class='note'>and {len(items) - 8} more</p>" if len(items) > 8 else "")
+        + "</div>"
+        for title, items, extra in groups
+        if items
+    )
+    blocks = blocks or "<p>No notable changes this week.</p>"
+    return f"<section class='changes'><h2>What changed this week</h2>{blocks}</section>"
+
+
 def index_page(data: dict) -> str:
     ranked = [e for e in data["families"] if e["rank"] is not None]
     rows = "".join(
@@ -131,10 +172,11 @@ def index_page(data: dict) -> str:
         f"<td><a href='drug/{esc(e['slug'])}.html'>{esc(e['name'])}</a></td>"
         f"<td>{pct(e['prob'])}</td><td class='opt'>{e['multiple']}×</td>"
         f"<td>{band_badge(e['band'])}</td>"
-        f"<td class='why opt'>{esc(e['reasons'][0]) if e['reasons'] else ''}</td></tr>"
+        f"<td class='why opt'>{esc(main_reason(e))}</td></tr>"
         for e in ranked[:WATCHLIST_SIZE]
     )
     legend = "".join(f"<li>{band_badge(b)} {esc(BAND_TEXT[b])}</li>" for _, b in BANDS)
+    n_injectable = sum(e["injectable"] for e in ranked[:WATCHLIST_SIZE])
     body = f"""
 <h1>Drug shortage watchlist</h1>
 <p>The {WATCHLIST_SIZE} drug families with the highest estimated chance that a <strong>new</strong>
@@ -142,6 +184,11 @@ FDA-listed shortage starts in the next 90 days, for the week of {esc(data["week"
 A typical family's chance is about {BASE_RATE * 100:.2f}%. Families already in shortage are
 <a href="shortages.html">listed separately</a>.</p>
 <ul class="legend">{legend}</ul>
+{changes_section(data.get("changes"))}
+<h2>Top {WATCHLIST_SIZE}</h2>
+<p class="note">{n_injectable} of these {WATCHLIST_SIZE} are sterile injectables, which shows how
+strongly drug type drives risk. To see tablets, capsules and other forms, use
+<a href="all.html">All drugs</a>.</p>
 <div class="table-wrap"><table>
 <thead><tr><th>#</th><th class="opt">Δ wk</th><th>Drug family</th><th>90-day risk</th>
 <th class="opt">vs typical</th><th>Band</th><th class="opt">Main reason</th></tr></thead>
@@ -172,7 +219,19 @@ box.addEventListener('input', async () => {{
 
 def drug_page(e: dict, data: dict, slugs: dict[str, str]) -> str:
     reasons = "".join(f"<li>{esc(r)}</li>" for r in e["reasons"])
-    reasons = reasons or "<li>No single strong driver.</li>"
+    reasons = reasons or (
+        "<li>No drug-specific warning signs. Its risk reflects its drug type.</li>"
+    )
+    peer = f"<p>{esc(e['peer_note'])}</p>" if e.get("peer_note") else ""
+    context = f"<p class='note'>{esc(e['context'])}</p>" if e.get("context") else ""
+    lost = ""
+    if e.get("lost_companies"):
+        names = ", ".join(esc(n) for n in e["lost_companies"])
+        lost = (
+            f"<p>No longer listed compared with about 6 months ago: {names}.</p>"
+            "<p class='note'>A listing can end for many reasons, including mergers and "
+            "relabeling. It doesn't always mean a company stopped making the drug.</p>"
+        )
     alts = e["alternatives"]
     makers = (
         ", ".join(esc(x) for x in alts["labelers"]) or "none listed in the latest NDC directory"
@@ -203,16 +262,19 @@ def drug_page(e: dict, data: dict, slugs: dict[str, str]) -> str:
         )
     body = f"""
 <h1>{esc(e["name"])}</h1>
-<p class="sub">{esc(e["form"])}</p>
+<p class="sub">{esc(e["form"])} · {esc(e.get("group", "Other"))}</p>
 {status}
 <h2>Why this estimate</h2>
 <ul>{reasons}</ul>
+{peer}
+{context}
 <p class="note">Reasons are the model's largest contributions for this week, in plain words.
 They describe statistical associations in past data, not causes.</p>
 <h2>Risk over time</h2>
 {sparkline(e["history"])}
 <h2>Who makes it</h2>
 <p>{makers}</p>
+{lost}
 <h2>Other forms of the same ingredient</h2>
 <ul>{forms}</ul>
 <p class="note">These are supply facts from FDA's NDC directory: other companies and other
@@ -235,6 +297,113 @@ shortages. FDA's <a href="https://www.accessdata.fda.gov/scripts/drugshortages/"
 database</a> is the authoritative source.</p>
 <ul class="cols">{items}</ul>"""
     return page("In shortage now: RxRadar", body, freshness=data["freshness"])
+
+
+def all_page(data: dict) -> str:
+    groups = sorted({e["group"] for e in data["families"]} - {"Other"}) + ["Other"]
+    group_opts = "".join(f"<option>{esc(g)}</option>" for g in groups)
+    form_opts = "".join(f"<option>{esc(f)}</option>" for f in FORM_FILTERS)
+    band_opts = "".join(f"<option>{esc(b)}</option>" for _, b in BANDS)
+    body = f"""
+<h1>All drugs</h1>
+<p>Search and filter every drug family RxRadar tracks. Drug groups are for browsing only: being
+in the same group doesn't mean two drugs can replace each other.</p>
+<form class="filters" onsubmit="return false">
+<input id="q" type="search" placeholder="Drug name" aria-label="Search by drug name">
+<select id="group" aria-label="Drug group"><option value="">All groups</option>{group_opts}</select>
+<select id="form" aria-label="Form"><option value="">All forms</option>{form_opts}</select>
+<select id="band" aria-label="Risk band"><option value="">All bands</option>{band_opts}</select>
+</form>
+<p id="count" class="note" aria-live="polite"></p>
+<div class="table-wrap"><table><thead><tr><th>#</th><th>Drug family</th><th>90-day risk</th>
+<th>Band</th><th class="opt">Group</th></tr></thead><tbody id="rows"></tbody></table></div>
+<script>
+const q = document.getElementById('q'), g = document.getElementById('group'),
+  f = document.getElementById('form'), b = document.getElementById('band'),
+  rows = document.getElementById('rows'), count = document.getElementById('count');
+let all = [];
+function cell(tr, text, cls) {{
+  const td = document.createElement('td');
+  td.textContent = text;
+  if (cls) td.className = cls;
+  tr.append(td);
+  return td;
+}}
+function draw() {{
+  const term = q.value.trim().toLowerCase();
+  const hits = all.filter(e => (!term || e.n.toLowerCase().includes(term))
+    && (!g.value || e.g === g.value) && (!f.value || e.f === f.value)
+    && (!b.value || e.d === b.value));
+  count.textContent = hits.length + ' drugs' + (hits.length > 200 ? ', showing the first 200' : '');
+  rows.replaceChildren();
+  for (const e of hits.slice(0, 200)) {{
+    const tr = document.createElement('tr');
+    cell(tr, e.r ?? '—');
+    const link = document.createElement('a');
+    link.href = 'drug/' + e.s + '.html';
+    link.textContent = e.n;
+    cell(tr, '').append(link);
+    cell(tr, e.b);
+    cell(tr, e.d ?? 'in shortage');
+    cell(tr, e.g, 'opt');
+    rows.append(tr);
+  }}
+}}
+fetch('search.json').then(r => r.json()).then(d => {{ all = d; draw(); }});
+[q, g, f, b].forEach(el => el.addEventListener('input', draw));
+</script>"""
+    return page("All drugs: RxRadar", body, freshness=data["freshness"])
+
+
+def is_fragile(e: dict) -> bool:
+    """Few listed makers of a generic. Brand-only drugs are single-source by
+    design, so they'd drown out the cases worth attention."""
+    return e["n_labelers"] in (1, 2) and bool(e.get("n_generic_labelers"))
+
+
+def lost_a_company(e: dict) -> bool:
+    """A lost listing only matters when few remain. Elsewhere it's mostly
+    repackagers coming and going: about 770 families would qualify otherwise."""
+    if not e.get("lost_companies") or not e["n_labelers"]:
+        return False
+    return e["n_labelers"] <= LOST_COMPANY_MAX_LEFT and bool(
+        e.get("n_generic_labelers") or e["injectable"]
+    )
+
+
+def fragile_page(data: dict) -> str:
+    fams = data["families"]
+    lost = sorted(filter(lost_a_company, fams), key=lambda e: (e["n_labelers"] or 0, e["name"]))
+    few = sorted(
+        filter(is_fragile, fams), key=lambda e: (e["n_labelers"], not e["injectable"], e["name"])
+    )
+
+    def row(e: dict) -> str:
+        status = "in shortage" if e["in_shortage_now"] else esc(e["band"])
+        return (
+            f"<tr><td>{drug_link(e)}</td><td>{e['n_labelers']}</td>"
+            f"<td class='opt'>{esc(e['group'])}</td><td>{status}</td></tr>"
+        )
+
+    head = (
+        "<thead><tr><th>Drug family</th><th>Companies listed</th><th class='opt'>Group</th>"
+        "<th>Risk band</th></tr></thead>"
+    )
+    lost_rows = "".join(row(e) for e in lost[:FRAGILE_LIMIT])
+    few_rows = "".join(row(e) for e in few[:FRAGILE_LIMIT])
+    body = f"""
+<h1>Fragile supply</h1>
+<p>Plain facts from FDA's NDC directory, not predictions. A drug with few companies listed has
+less backup if one has a problem. That doesn't mean a shortage is coming, and a listed company
+isn't always the one making the drug.</p>
+<h2>Lost a company in the past 6 months, {LOST_COMPANY_MAX_LEFT} or fewer left ({len(lost)})</h2>
+<div class="table-wrap"><table>{head}<tbody>{lost_rows}</tbody></table></div>
+<h2>Generics with one or two companies listed ({len(few)})</h2>
+<div class="table-wrap"><table>{head}<tbody>{few_rows}</tbody></table></div>
+<p class="note">Lists show up to {FRAGILE_LIMIT} drugs. Company names are compared loosely, so a
+merger or rename can appear as a lost company, and many listed companies are repackagers rather
+than manufacturers.</p>"""
+    return page("Fragile supply: RxRadar", body, freshness=data["freshness"])
 
 
 def rate(x: float | None) -> str:
@@ -374,23 +543,19 @@ recommend treatments or substitutes.</p>"""
 
 
 def feed(data: dict, base_url: str) -> str:
-    """RSS items: families that entered the top 50 this week or moved up a band."""
-    order = [b for _, b in BANDS]
+    """RSS items for real changes: risk-band rises and big rank jumps."""
+    by_slug = {e["slug"]: e for e in data["families"]}
+    changes = data.get("changes") or {"moved_up_band": [], "big_jumps": []}
+    updates = [(c, f"moved from {c['from']} to {c['to']} risk") for c in changes["moved_up_band"]]
+    updates += [(c, f"jumped from #{c['from']} to #{c['to']}") for c in changes["big_jumps"]]
     items = []
-    for e in data["families"]:
-        if e["rank"] is None or e["rank"] > WATCHLIST_SIZE:
-            continue
-        prev_prob = e["history"][-2]["prob"] if len(e["history"]) >= 2 else None
-        prev_band = band(prev_prob) if prev_prob is not None else None
-        entered = e["prev_rank"] is None or e["prev_rank"] > WATCHLIST_SIZE
-        up_band = prev_band is not None and order.index(e["band"]) < order.index(prev_band)
-        if not (entered or up_band):
-            continue
-        why = "entered the top 50" if entered else f"moved from {prev_band} to {e['band']}"
+    for c, why in updates:
+        e = by_slug[c["slug"]]
         link = f"{base_url}drug/{e['slug']}.html"
         guid = f"{e['slug']}-{data['week']}"
+        reasons = "; ".join(e["reasons"]) or "no drug-specific warning signs"
         desc = (
-            f"Estimated 90-day risk {pct(e['prob'])}. {'; '.join(e['reasons'])}. "
+            f"Estimated 90-day risk {pct(e['prob'])}. {reasons}. "
             "Supply risk only, not clinical advice."
         )
         items.append(
@@ -403,14 +568,18 @@ def feed(data: dict, base_url: str) -> str:
     return (
         "<?xml version='1.0' encoding='UTF-8'?><rss version='2.0'><channel>"
         f"<title>RxRadar watchlist changes</title><link>{xml_escape(base_url)}</link>"
-        "<description>Drug families entering the RxRadar top 50 or moving up a risk band. "
+        "<description>Drug families moving up a risk band or jumping in rank. "
         "Supply risk only, not clinical advice.</description>"
         f"<lastBuildDate>{now}</lastBuildDate>{''.join(items)}</channel></rss>"
     )
 
 
 def search_label(e: dict) -> str:
-    return "in shortage now" if e["in_shortage_now"] else f"{pct(e['prob'])} ({e['band']})"
+    return "in shortage now" if e["in_shortage_now"] else pct(e["prob"])
+
+
+def form_filter(form: str) -> str:
+    return next((f for f in FORM_FILTERS if f.lower() in form.lower()), "Other")
 
 
 def build_site(scores_path: Path | None = None, out: Path | None = None) -> Path:
@@ -428,12 +597,25 @@ def build_site(scores_path: Path | None = None, out: Path | None = None) -> Path
     (out / "index.html").write_text(index_page(data))
     (out / "shortages.html").write_text(shortages_page(data, slugs))
     (out / "about.html").write_text(about_page(data))
+    (out / "all.html").write_text(all_page(data))
+    (out / "fragile.html").write_text(fragile_page(data))
     track_path = scores_path.parent / "track_record.json"
     track = json.loads(track_path.read_text()) if track_path.exists() else None
     (out / "track-record.html").write_text(track_page(track, data))
     for e in data["families"]:
         (out / "drug" / f"{e['slug']}.html").write_text(drug_page(e, data, slugs))
-    search = [{"n": e["name"], "s": e["slug"], "b": search_label(e)} for e in data["families"]]
+    search = [
+        {
+            "n": e["name"],
+            "s": e["slug"],
+            "b": search_label(e),
+            "r": e["rank"],
+            "d": e["band"],
+            "g": e.get("group", "Other"),
+            "f": form_filter(e["form"]),
+        }
+        for e in data["families"]
+    ]
     (out / "search.json").write_text(json.dumps(search, separators=(",", ":")))
     (out / "feed.xml").write_text(feed(data, base_url))
     (out / ".nojekyll").write_text("")

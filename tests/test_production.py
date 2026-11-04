@@ -4,7 +4,13 @@ import numpy as np
 import pandas as pd
 
 from rxradar.model.backtest import LOGISTIC_FEATURES
-from rxradar.model.production import ProductionModel, band, reason_text, top_reasons
+from rxradar.model.production import (
+    ProductionModel,
+    band,
+    reason_text,
+    top_reasons,
+    type_context,
+)
 
 
 def frame(n=4000, seed=0):
@@ -62,3 +68,11 @@ def test_reasons_are_plain_sentences():
         "2 new FDA-listed shortages in the past 3 years",
         "only 1 company lists it in FDA's NDC directory",
     ]  # negative contributions are never shown as reasons
+
+
+def test_drug_type_is_context_not_a_reason():
+    row = pd.Series({"injectable": True, "hist_onsets_3y": 1})
+    contrib = pd.Series({"injectable": 2.0, "hist_onsets_3y": 0.5})
+    assert top_reasons(contrib, row) == ["1 new FDA-listed shortage in the past 3 years"]
+    assert top_reasons(pd.Series({"injectable": 2.0}), row) == []
+    assert "injectables" in type_context(row)

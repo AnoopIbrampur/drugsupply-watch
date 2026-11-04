@@ -26,13 +26,30 @@ import pandas as pd
 
 from rxradar.model.backtest import rule_score
 from rxradar.model.dataset import load_dataset
-from rxradar.model.production import BASE_RATE, ProductionModel, band, top_reasons
+from rxradar.model.production import (
+    BANDS,
+    BASE_RATE,
+    ProductionModel,
+    band,
+    top_reasons,
+    type_context,
+)
 from rxradar.paths import data_root, derived_dir
-from rxradar.site.catalog import alternatives, display_names, form_label
+from rxradar.site.catalog import (
+    alternatives,
+    display_names,
+    drug_group,
+    form_label,
+    lost_companies,
+)
 
 log = logging.getLogger(__name__)
 
 HISTORY_WEEKS = 104
+JUMP_PLACES = 25  # a rank rise this big inside the top JUMP_WITHIN counts as news
+JUMP_WITHIN = 200
+LOST_COMPANY_WINDOW_DAYS = 183
+PEER_PERCENTILE = 90
 
 
 def model_path():
@@ -94,6 +111,13 @@ def score(model: ProductionModel | None = None) -> dict:
 
     now = recent[recent.week == latest].set_index("family")
     contrib = model.contributions(now)
+    groups = _family_groups(current_products, names, families)
+    snapshots = sorted(ndc.published.unique())
+    latest_ndc = ndc[ndc.published == snapshots[-1]]
+    cutoff = snapshots[-1] - pd.Timedelta(days=LOST_COMPANY_WINDOW_DAYS)
+    older = [d for d in snapshots if d <= cutoff]
+    lost = lost_companies(ndc[ndc.published == older[-1]], latest_ndc) if older else {}
+    peer_notes = _peer_notes(now)
     ranked = now[~now.in_shortage_now].sort_values("prob", ascending=False)
     rank = pd.Series(np.arange(1, len(ranked) + 1), index=ranked.index)
     # The rule baseline's rank, for the track record (decisions D9). Ties break
@@ -125,6 +149,13 @@ def score(model: ProductionModel | None = None) -> dict:
                 "prev_rank": int(prev_rank[fam]) if fam in prev_rank else None,
                 "rule_rank": int(rule_rank[fam]) if fam in rule_rank else None,
                 "reasons": [] if row.in_shortage_now else top_reasons(contrib.loc[fam], row),
+                "context": type_context(row),
+                "peer_note": peer_notes.get(fam),
+                "group": groups.get(fam, "Other"),
+                "n_generic_labelers": (
+                    None if pd.isna(row.sup_n_generic_labelers) else int(row.sup_n_generic_labelers)
+                ),
+                "lost_companies": lost.get(fam, []),
                 "n_labelers": None if pd.isna(row.sup_n_labelers) else int(row.sup_n_labelers),
                 "injectable": bool(row.injectable),
                 "alternatives": alts.get(fam, {"labelers": [], "other_forms": []}),
@@ -140,7 +171,9 @@ def score(model: ProductionModel | None = None) -> dict:
                 ],
             }
         )
+    prior = prev_week.set_index("family")
     out = {
+        "changes": _weekly_changes(entries, prior, lost),
         "generated_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
         "week": latest.date().isoformat(),
         "model": {
@@ -157,8 +190,75 @@ def score(model: ProductionModel | None = None) -> dict:
     return out
 
 
+def _family_groups(products: pd.DataFrame, names: pd.Series, families: list[str]) -> dict:
+    classes = products.groupby("family").PHARM_CLASSES.agg(lambda c: ", ".join(sorted(set(c))))
+    generic = products.groupby("family").NONPROPRIETARYNAME.agg(lambda c: " ".join(set(c)))
+    return {
+        f: drug_group(f, classes.get(f, ""), f"{names.get(f, '')} {generic.get(f, '')}")
+        for f in families
+    }
+
+
+def _peer_notes(now: pd.DataFrame) -> dict[str, str]:
+    """A note when a drug stands out among drugs of its own type: more recalls
+    or more past shortages than at least 90% of its peers."""
+    notes: dict[str, str] = {}
+    measures = [
+        ("rec_family_1y", "recalls in the past year"),
+        ("hist_onsets_all", "past FDA-listed shortages"),
+    ]
+    for injectable, peers in now.groupby("injectable"):
+        label = "injectable drugs" if injectable else "non-injectable drugs"
+        for column, what in measures:
+            pct = peers[column].rank(pct=True) * 100
+            for fam in peers.index[(peers[column] > 0) & (pct >= PEER_PERCENTILE)]:
+                # A percentile counts the drug itself, so 100 really means "the most".
+                share = min(int(pct[fam]), 99)
+                notes.setdefault(fam, f"More {what} than {share}% of {label}.")
+    return notes
+
+
+def _weekly_changes(entries: list[dict], prior: pd.DataFrame, lost: dict) -> dict:
+    """What's new since last week, leaving out small moves around rank 50."""
+    order = [b for _, b in BANDS]
+
+    def summary(e: dict) -> dict:
+        return {"name": e["name"], "slug": e["slug"], "form": e["form"]}
+
+    new_short, resolved, up_band, jumps = [], [], [], []
+    for e in entries:
+        fam = e["family"]
+        if fam not in prior.index:
+            continue
+        was = prior.loc[fam]
+        if e["in_shortage_now"] and not was.in_shortage_now:
+            new_short.append(summary(e))
+        elif was.in_shortage_now and not e["in_shortage_now"]:
+            resolved.append(summary(e))
+        if e["rank"] is None or was.in_shortage_now:
+            continue
+        before = band(float(was.prob))
+        if order.index(e["band"]) < order.index(before):
+            up_band.append({**summary(e), "from": before, "to": e["band"], "rank": e["rank"]})
+        elif (
+            e["prev_rank"] is not None
+            and e["rank"] <= JUMP_WITHIN
+            and e["prev_rank"] - e["rank"] >= JUMP_PLACES
+        ):
+            jumps.append({**summary(e), "from": e["prev_rank"], "to": e["rank"]})
+    return {
+        "new_shortages": new_short,
+        "resolved_shortages": resolved,
+        "moved_up_band": sorted(up_band, key=lambda x: x["rank"]),
+        "big_jumps": sorted(jumps, key=lambda x: x["to"]),
+    }
+
+
 def _current_products() -> pd.DataFrame:
     """Currently listed Rx products with their generic names (for display)."""
     p = pd.read_parquet(derived_dir() / "product_families.parquet")
     p = p[(p.listing == "current") & p.family.notna()]
-    return p[["NONPROPRIETARYNAME", "family"]].fillna({"NONPROPRIETARYNAME": ""})
+    p = p.reindex(
+        columns=["NONPROPRIETARYNAME", "PHARM_CLASSES", "family"]
+    )  # older state lacks one
+    return p.fillna({"NONPROPRIETARYNAME": "", "PHARM_CLASSES": ""})

@@ -28,16 +28,26 @@ def entry(slug, name, rank, prob, band, prev_rank=None, short=False, family=None
         "injectable": True,
         "alternatives": {"labelers": ["Maker A", "Maker B"], "other_forms": []},
         "history": history or HISTORY,
+        "group": "Infections",
+        "context": "Sterile injectables are in shortage more often than other drugs.",
+        "peer_note": None,
+        "n_generic_labelers": 2,
+        "lost_companies": [],
     }
 
 
-def scores(tmp_path):
+def empty_changes():
+    return {"new_shortages": [], "resolved_shortages": [], "moved_up_band": [], "big_jumps": []}
+
+
+def scores(tmp_path, changes=None):
     data = {
         "generated_at": "2026-10-30T00:00:00+00:00",
         "week": "2026-10-26",
         "model": {"type": "calibrated logistic regression", "trained_through": "2026-10-30"},
         "base_rate": 0.0025,
         "freshness": {"FDA shortage list": "2026-10-30"},
+        "changes": changes or empty_changes(),
         "families": [
             entry("evil", "<script>alert(1)</script> Injection", 1, 0.03, "high", prev_rank=None),
             entry(
@@ -67,9 +77,11 @@ def test_pages_exist_and_carry_the_disclaimer(tmp_path):
         out / "about.html",
         out / "shortages.html",
         out / "track-record.html",
+        out / "all.html",
+        out / "fragile.html",
     ]
     pages += sorted((out / "drug").glob("*.html"))
-    assert len(pages) == 7
+    assert len(pages) == 9
     for p in pages:
         assert "not clinical advice" in p.read_text()
 
@@ -89,18 +101,57 @@ def test_shortage_families_are_not_ranked(tmp_path):
     assert "not ranked" in (out / "drug" / "short.html").read_text()
 
 
-def test_feed_is_valid_rss_with_only_real_changes(tmp_path):
-    out = build_site(scores(tmp_path), tmp_path / "public")
+def test_feed_lists_only_real_changes(tmp_path):
+    changes = empty_changes()
+    item = {"name": "Evil", "slug": "evil", "form": "injection", "rank": 1}
+    changes["moved_up_band"] = [{**item, "from": "typical", "to": "high"}]
+    out = build_site(scores(tmp_path, changes), tmp_path / "public")
     root = ET.parse(out / "feed.xml").getroot()
     titles = [i.findtext("title") for i in root.iter("item")]
-    # "evil" is new to the top 50; "steady" didn't move up a band.
-    assert len(titles) == 1 and "entered the top 50" in titles[0]
+    assert len(titles) == 1 and "moved from typical to high" in titles[0]
+
+
+def test_feed_is_empty_on_a_quiet_week(tmp_path):
+    out = build_site(scores(tmp_path), tmp_path / "public")
+    assert not list(ET.parse(out / "feed.xml").getroot().iter("item"))
+
+
+def test_quiet_week_says_so_and_news_is_listed(tmp_path):
+    out = build_site(scores(tmp_path), tmp_path / "public")
+    assert "No notable changes this week" in (out / "index.html").read_text()
+    changes = empty_changes()
+    changes["new_shortages"] = [{"name": "Newly Short", "slug": "evil", "form": "tablet"}]
+    out = build_site(scores(tmp_path, changes), tmp_path / "public2")
+    assert "New FDA-listed shortages" in (out / "index.html").read_text()
+
+
+def test_fragile_page_is_facts_and_filters_brands(tmp_path):
+    data = json.loads(scores(tmp_path).read_text())
+    data["families"][0].update(n_labelers=1, n_generic_labelers=0)  # brand-only: excluded
+    data["families"][1].update(n_labelers=1, n_generic_labelers=1, group="Heart")
+    p = tmp_path / "s.json"
+    p.write_text(json.dumps(data))
+    html = (build_site(p, tmp_path / "public") / "fragile.html").read_text()
+    assert "Steady Tablet" in html and "alert(1)" not in html
+    assert "mean a shortage is coming" in html
+
+
+def test_drug_page_explains_when_there_are_no_specific_reasons(tmp_path):
+    data = json.loads(scores(tmp_path).read_text())
+    data["families"][0].update(reasons=[], lost_companies=["Old Co"], peer_note="More recalls.")
+    p = tmp_path / "s.json"
+    p.write_text(json.dumps(data))
+    html = (build_site(p, tmp_path / "public") / "drug" / "evil.html").read_text()
+    assert "reflects its drug type" in html
+    assert "Old Co" in html and "More recalls." in html
 
 
 def test_search_index(tmp_path):
     out = build_site(scores(tmp_path), tmp_path / "public")
     idx = json.loads((out / "search.json").read_text())
     assert {e["s"] for e in idx} == {"evil", "steady", "short"}
+    evil = next(e for e in idx if e["s"] == "evil")
+    assert evil["g"] == "Infections" and evil["f"] == "Injection" and evil["d"] == "high"
 
 
 def track_record(**over):
@@ -160,3 +211,12 @@ def test_track_page_shows_misses_and_warns_when_early(tmp_path):
 def test_track_page_before_tracking_starts(tmp_path):
     html = (build_site(scores(tmp_path), tmp_path / "public") / "track-record.html").read_text()
     assert "hasn't started" in html
+
+
+def test_lost_company_section_only_counts_when_few_remain(tmp_path):
+    from rxradar.site.build import lost_a_company
+
+    base = {"lost_companies": ["Gone"], "n_generic_labelers": 2, "injectable": False}
+    assert lost_a_company({**base, "n_labelers": 3})
+    assert not lost_a_company({**base, "n_labelers": 12})
+    assert not lost_a_company({**base, "n_labelers": 2, "lost_companies": []})
