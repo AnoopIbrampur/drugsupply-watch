@@ -18,7 +18,9 @@ import httpx
 
 log = logging.getLogger(__name__)
 
-USER_AGENT = "rxradar/0.1 (non-commercial research; https://github.com/anoopibrampur/rxradar)"
+USER_AGENT = (
+    "rxradar/0.1 (non-commercial research; https://github.com/AnoopIbrampur/drugsupply-watch)"
+)
 RETRY_STATUSES = {429, 500, 502, 503, 504}
 # accessdata.fda.gov sends clients it treats as bots to this page; seen from
 # GitHub Actions runners on 2026-10-30.

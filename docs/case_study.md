@@ -1,8 +1,8 @@
-# RxRadar: forecasting US drug shortages from public data
+# DrugSupply Watch: forecasting US drug shortages from public data
 
-**[Live site](https://anoopibrampur.github.io/rxradar/)** · [Model card](model_card.md) · [Data audit](data_audit.md) · [Decision log](decisions.md)
+**[Live site](https://anoopibrampur.github.io/drugsupply-watch/)** · [Model card](model_card.md) · [Data audit](data_audit.md) · [Decision log](decisions.md)
 
-RxRadar estimates which drugs are most likely to enter a new FDA-listed shortage in the next 90 days. It publishes a ranked watchlist with plain-English reasons, and updates itself every night on free infrastructure.
+DrugSupply Watch estimates which drugs are most likely to enter a new FDA-listed shortage in the next 90 days. It publishes a ranked watchlist with plain-English reasons, and updates itself every night on free infrastructure.
 
 **The short version**
 
@@ -11,7 +11,7 @@ RxRadar estimates which drugs are most likely to enter a new FDA-listed shortage
 - It's still imprecise: only about **1 in 50** flagged drug-weeks led to a shortage. The site says so on every page.
 - Since November 2026, each week's predictions are frozen in public before the outcomes are known, under scoring rules published in advance.
 
-![The RxRadar watchlist](img/watchlist.jpg)
+![The DrugSupply Watch watchlist](img/watchlist.jpg)
 
 ## The problem
 
@@ -75,7 +75,7 @@ These are the parts I'd most like to discuss in an interview.
 
 ## Proving it live
 
-A backtest can always be accused of hindsight. So each week, RxRadar saves its full ranking to a [public branch](https://github.com/AnoopIbrampur/rxradar/tree/predictions) and never rewrites it. The scoring rules were committed before any result existed. The [Track Record page](https://anoopibrampur.github.io/rxradar/track-record.html) will list every shortage, caught or missed, against both random and the simple rule.
+A backtest can always be accused of hindsight. So each week, DrugSupply Watch saves its full ranking to a [public branch](https://github.com/AnoopIbrampur/drugsupply-watch/tree/predictions) and never rewrites it. The scoring rules were committed before any result existed. The [Track Record page](https://anoopibrampur.github.io/drugsupply-watch/track-record.html) will list every shortage, caught or missed, against both random and the simple rule.
 
 New shortages are rare, so this will take a long time to say anything firm, and the page says that too. The first full week reaches its 90 days around February 2027.
 

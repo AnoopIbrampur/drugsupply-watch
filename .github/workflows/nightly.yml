@@ -49,7 +49,7 @@ jobs:
       - name: Publish a newly frozen week
         working-directory: predictions_store
         run: |
-          git config user.name "rxradar-bot"
+          git config user.name "drugsupply-watch-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           if git diff --cached --quiet; then
@@ -69,7 +69,7 @@ jobs:
         run: |
           age_days=$(( ( $(date +%s) - $(git log -1 --format=%ct) ) / 86400 ))
           if [ "$age_days" -gt 45 ]; then
-            git config user.name "rxradar-bot"
+            git config user.name "drugsupply-watch-bot"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             date -u +%F > .last-nightly
             git add .last-nightly

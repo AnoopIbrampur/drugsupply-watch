@@ -1,4 +1,4 @@
-# Model card: RxRadar shortage-onset ranking (Phase 3 backtest)
+# Model card: DrugSupply Watch shortage-onset ranking (Phase 3 backtest)
 
 *Backtest numbers refreshed 2026-11-04, after 44 reviewed name overrides corrected the labels (287 dated onsets). Every number below comes from `scripts/run_backtest.py`,
 `scripts/summarize_backtest.py` and `scripts/ablation.py` on the data

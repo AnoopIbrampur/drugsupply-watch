@@ -1,6 +1,6 @@
 """FDA Data Dashboard API: inspection classifications and compliance actions.
 
-Why: these are the supply-side signals that set RxRadar apart. Facility
+Why: these are the supply-side signals that set DrugSupply Watch apart. Facility
 inspections ending in OAI/VAI, and warning letters and other compliance
 actions, are keyed by FEI, which we link to products through SPL
 establishments and the registration file (docs/data_audit.md §5c).

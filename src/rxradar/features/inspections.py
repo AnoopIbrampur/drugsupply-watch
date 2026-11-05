@@ -1,7 +1,7 @@
 """Factory-quality features: FDA inspections and compliance actions.
 
 Why: a failed inspection or warning letter at the plant that makes a drug is a
-direct supply risk, and it's the signal RxRadar has been missing.
+direct supply risk, and it's the signal DrugSupply Watch has been missing.
 
 Sources (each row carries ``published``, see decisions D10):
 - ``inspections``: fei, code (NAI/VAI/OAI), country. FMD145 date + 30 days, else

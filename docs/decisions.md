@@ -258,3 +258,11 @@ Reported, not used to decide:
 LightGBM's gain is not a reason to switch: its CI includes zero, and with inspection data
 it only reaches about the current logistic model's level. These secondary rows were
 looked at after the fact, so none of them counts as evidence that inspections help.
+
+## D12. Project name — DECIDED 2026-11-05
+
+Renamed RxRadar to DrugSupply Watch, on the site, in the docs and on GitHub. The new name
+says the project is about supply, not treatment. The Python package, the `rxradar` command
+and the `RXRADAR_*` settings keep their old name: they aren't public-facing, and changing
+them would put the nightly pipeline at risk for no gain to readers. The frozen prediction
+files are untouched, so the public record carries on through the rename.

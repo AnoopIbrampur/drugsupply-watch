@@ -1,10 +1,12 @@
-# RxRadar
+# DrugSupply Watch
 
 An early-warning watchlist for new US drug shortages, built only from public FDA and
-Medicaid data. **[See the live site](https://anoopibrampur.github.io/rxradar/)**, updated
+Medicaid data. **[See the live site](https://anoopibrampur.github.io/drugsupply-watch/)**, updated
 nightly, or read the **[case study](docs/case_study.md)**.
 
-For each drug (same ingredient, form and route), RxRadar estimates the chance of a new
+Formerly named RxRadar. The Python package and command are still called `rxradar`.
+
+For each drug (same ingredient, form and route), DrugSupply Watch estimates the chance of a new
 FDA-listed shortage in the next 90 days and explains why in plain words.
 
 - **Backtest:** a 100-drug watchlist would have flagged about 1 in 4 new shortages at least
@@ -44,7 +46,7 @@ data.medicaid.gov). Re-runs skip immutable files. Run single sources with
 
 ## Track record
 Each week's predictions are frozen before their outcomes are known, on the
-[`predictions`](https://github.com/AnoopIbrampur/rxradar/tree/predictions) branch, and
+[`predictions`](https://github.com/AnoopIbrampur/drugsupply-watch/tree/predictions) branch, and
 scored by rules fixed in advance ([decisions D9](docs/decisions.md)). Saved weeks are
 never rewritten, and results appear on the site's Track Record page.
 
