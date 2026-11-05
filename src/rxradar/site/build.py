@@ -99,7 +99,8 @@ def page(
 <link rel="preload" href="{root}fonts/public-sans-latin-wght-normal.woff2" as="font"
   type="font/woff2" crossorigin>
 <link rel="stylesheet" href="{root}style.css">
-<link rel="alternate" type="application/rss+xml" title="DrugSupply Watch watchlist" href="{root}feed.xml">
+<link rel="alternate" type="application/rss+xml" title="DrugSupply Watch updates"
+href="{root}feed.xml">
 </head><body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="masthead"><div class="wrap">
@@ -377,12 +378,14 @@ box.addEventListener('input', async () => {{
 
 def inspection_section(facts: dict | None) -> str:
     if facts is None:
-        return """<p>DrugSupply Watch hasn't linked this drug to a factory, so its inspection record is
+        return """<p>DrugSupply Watch hasn't linked this drug to a factory, so its inspection
+record is
 unknown. That doesn't mean the record is clean.</p>
 <p class="note">Links exist only for some generic and injectable drugs, from up to 5 companies'
 labels each.</p>"""
     n = facts["factories"]
-    return f"""<p>Labels for this drug list {n} {"factory" if n == 1 else "factories"} that DrugSupply Watch
+    return f"""<p>Labels for this drug list {n} {"factory" if n == 1 else "factories"} that
+DrugSupply Watch
 matched to FDA records. FDA has drug-quality inspection results for {facts["inspected"]} of them.
 In the past 3 years of public results, {facts["failed_3y"]} had an inspection classified Official
 Action Indicated (OAI), and {facts["actions_3y"]} had a warning letter, injunction or seizure.</p>
@@ -390,7 +393,8 @@ Action Indicated (OAI), and {facts["actions_3y"]} had a warning letter, injuncti
 a current safety warning: the problems may have been fixed, and they may involve other products
 made at the same factory.</p>
 <details><summary>Limits of this list</summary>
-<p class="note">This list can be incomplete, because labels may name only some sites and DrugSupply Watch
+<p class="note">This list can be incomplete, because labels may name only some sites and DrugSupply
+Watch
 reads only some labels. Results can appear here up to about 2 years late, because FDA doesn't say
 when most were released. These facts don't affect the risk estimate.</p></details>"""
 
@@ -498,7 +502,8 @@ def shortages_page(data: dict, slugs: dict[str, str]) -> str:
     )
     body = f"""
 <h1>On FDA's shortage list now</h1>
-<p class="lede">{len(short)} drug families that DrugSupply Watch can map are listed as current shortages
+<p class="lede">{len(short)} drug families that DrugSupply Watch can map are listed as current
+shortages
 by FDA in the latest capture. They are excluded from the watchlist, which only covers <em>new</em>
 shortages. FDA's <a href="https://www.accessdata.fda.gov/scripts/drugshortages/">drug shortage
 database</a> is the authoritative source.</p>
@@ -518,7 +523,8 @@ def all_page(data: dict) -> str:
     band_opts = "".join(f"<option>{esc(b)}</option>" for _, b in BANDS)
     body = f"""
 <h1>All drugs</h1>
-<p class="lede">Search and filter every drug family DrugSupply Watch tracks. Drug groups are for browsing
+<p class="lede">Search and filter every drug family DrugSupply Watch tracks. Drug groups are for
+browsing
 only: being in the same group doesn't mean drugs can replace each other.</p>
 <form onsubmit="return false">
 <div class="search-row"><label for="q">Drug name</label>
@@ -813,7 +819,7 @@ def feed(data: dict, base_url: str) -> str:
     now = dt.datetime.now(dt.UTC).strftime("%a, %d %b %Y %H:%M:%S +0000")
     return (
         "<?xml version='1.0' encoding='UTF-8'?><rss version='2.0'><channel>"
-        f"<title>DrugSupply Watch watchlist changes</title><link>{xml_escape(base_url)}</link>"
+        f"<title>DrugSupply Watch updates</title><link>{xml_escape(base_url)}</link>"
         "<description>Drug families moving up a risk band or jumping in rank. "
         "Supply risk only, not clinical advice.</description>"
         f"<lastBuildDate>{now}</lastBuildDate>{''.join(items)}</channel></rss>"
