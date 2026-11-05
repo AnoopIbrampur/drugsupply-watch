@@ -61,10 +61,10 @@ p, ul { margin: 0 0 1rem; }
 .masthead nav a[aria-current] { color: var(--ink); font-weight: 600;
   border-bottom-color: var(--ink); }
 .disclaimer { background: var(--tint); border-bottom: 1px solid var(--line); }
-.disclaimer p { margin: 0; padding-top: 0.5rem; padding-bottom: 0.5rem; font-size: 0.8125rem;
+.disclaimer p { margin: 0 auto; padding-top: 0.5rem; padding-bottom: 0.5rem; font-size: 0.8125rem;
   line-height: 1.45; color: var(--muted); }
 .disclaimer strong { color: var(--ink); }
-main { padding-top: 2rem; padding-bottom: 1rem; }
+main.wrap { padding-top: 2rem; padding-bottom: 1rem; }
 .crumbs { font-size: 0.875rem; color: var(--muted); margin-bottom: 1rem; }
 .eyebrow { margin: 0 0 0.5rem; font-size: 0.8125rem; font-weight: 600; color: var(--muted);
   letter-spacing: 0.04em; text-transform: uppercase; }
@@ -131,10 +131,9 @@ td.why { color: var(--muted); font-size: 0.875rem; }
 .change { white-space: nowrap; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
 
 /* This week's news */
-.changes { display: grid; gap: 1.25rem 2rem; margin: 1.5rem 0;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
-.changes h2 { grid-column: 1 / -1; margin: 1rem 0 -0.5rem; }
-.changes > div { border-top: 2px solid var(--ink); padding-top: 0.5rem; }
+.changes { display: flex; flex-wrap: wrap; gap: 1.25rem 2rem; margin: 1.5rem 0; }
+.changes h2 { flex: 0 0 100%; margin: 1rem 0 -0.5rem; }
+.changes > div { flex: 1 1 15rem; border-top: 2px solid var(--ink); padding-top: 0.5rem; }
 .changes ul { list-style: none; padding: 0; margin: 0; font-size: 0.925rem; }
 .changes li { padding: 0.15rem 0; }
 
@@ -161,7 +160,6 @@ td.why { color: var(--muted); font-size: 0.875rem; }
 .alert { border-left: 4px solid var(--c); }
 .drug-grid { display: grid; gap: 0 3.5rem; }
 .drug-grid > * { min-width: 0; }
-.facts h2:first-child { margin-top: 2.75rem; }
 .facts h2 { font-size: 1.25rem; }
 .facts ul.makers { columns: 1; list-style: none; padding: 0; font-size: 0.925rem;
   overflow-wrap: anywhere; }
@@ -171,7 +169,7 @@ td.why { color: var(--muted); font-size: 0.875rem; }
 /* Chart. Text is larger in SVG units on phones, where the drawing is scaled down. */
 .chart { margin: 0 0 1rem; }
 .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
-.chart text { font: 11px var(--sans); fill: var(--muted); font-variant-numeric: tabular-nums; }
+.chart text { font: 10px var(--sans); fill: var(--muted); font-variant-numeric: tabular-nums; }
 .chart .grid { stroke: var(--line); stroke-width: 1; }
 .chart .line { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
 .chart .end { fill: var(--ink); }
@@ -195,7 +193,8 @@ footer p { margin-bottom: 0.5rem; }
   .opt { display: none; }  /* drug pages carry the full detail */
   .bar { display: none; }
   th, td { padding-left: 0.5rem; padding-right: 0.5rem; }
-  .masthead nav { margin-left: -0.6rem; }
+  .masthead nav { margin-left: -0.5rem; }
+  .masthead nav a { padding: 0 0.5rem; font-size: 0.875rem; }
   .scale { grid-template-columns: repeat(2, 1fr); }
   .chart text { font-size: 18px; }
 }
@@ -204,7 +203,6 @@ footer p { margin-bottom: 0.5rem; }
   .hero { grid-template-columns: minmax(0, 1fr) 22rem; }
   .verdict { grid-template-columns: auto minmax(0, 1fr); }
   .drug-grid { grid-template-columns: minmax(0, 1fr) 21rem; }
-  .facts h2:first-child { margin-top: 2.75rem; }
 }
 @media (prefers-reduced-motion: no-preference) {
   a, tbody tr { transition: color 120ms ease-out, background-color 120ms ease-out; }

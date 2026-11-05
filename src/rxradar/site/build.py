@@ -22,6 +22,7 @@ from __future__ import annotations
 import datetime as dt
 import html
 import json
+import math
 import os
 import shutil
 from collections import Counter
@@ -44,8 +45,9 @@ DISCLAIMER = (
     "flagged drug-weeks was followed by a new FDA-listed shortage within 90 days."
 )
 RADAR_MARK = """<svg viewBox="0 0 32 32" aria-hidden="true"><g fill="none"
-stroke="var(--ink)" stroke-width="2"><circle cx="16" cy="16" r="14"/><circle cx="16" cy="16"
-r="7.5"/><path d="M16 16 28 9"/></g><circle cx="22.5" cy="9.5" r="3.5" fill="currentColor"/></svg>"""
+stroke="var(--ink)" stroke-width="2"><circle cx="16" cy="16" r="14"/>
+<circle cx="16" cy="16" r="7.5"/><path d="M16 16 28 9"/></g>
+<circle cx="22.5" cy="9.5" r="3.5" fill="currentColor"/></svg>"""
 NAV = (
     ("index.html", "Watchlist"),
     ("all.html", "All drugs"),
@@ -112,32 +114,91 @@ non-commercial. <a href="{root}feed.xml">RSS feed</a> · <a href="{REPO_URL}">So
 """
 
 
-def sparkline(history: list[dict], width: int = 560, height: int = 90) -> str:
-    """SVG of weekly probability; weeks on FDA's shortage list shaded."""
+def axis_ticks(top: float) -> tuple[list[float], int]:
+    """Round y-axis values from 0 up past ``top``, and the decimals their labels need."""
+    exponent = math.floor(math.log10(top / 4))
+    step = next(m * 10**exponent for m in (1, 2, 5, 10) if top / (m * 10**exponent) <= 4)
+    ticks = [i * step for i in range(math.ceil(top / step) + 1)]
+    decimals = max(0, -math.floor(math.log10(step * 100) + 1e-9))
+    return ticks, decimals
+
+
+def risk_chart(history: list[dict], width: int = 560, height: int = 220) -> str:
+    """SVG of weekly probability; weeks on FDA's shortage list shaded.
+
+    A week with no estimate is a gap in the line, not a guess joined across it.
+    """
     if not history:
         return ""
-    probs = [h["prob"] for h in history]
-    top = max([p for p in probs if p is not None] + [BASE_RATE * 4])
+    left, right, top_pad, bottom = 44, 8, 8, 26
+    plot_w, plot_h = width - left - right, height - top_pad - bottom
     n = len(history)
-    step = width / max(n - 1, 1)
-    shade = "".join(
-        f"<rect x='{i * step - step / 2:.1f}' y='0' width='{step:.1f}' "
-        f"height='{height}' class='short'/>"
-        for i, h in enumerate(history)
-        if h["short"]
+    step = plot_w / max(n - 1, 1)
+    probs = [h["prob"] for h in history]
+    known = [p for p in probs if p is not None]
+    ticks, decimals = axis_ticks(max(known + [BASE_RATE * 4]))
+    y_max = ticks[-1]
+
+    def x(i: int) -> float:
+        return left + i * step
+
+    def y(p: float) -> float:
+        return top_pad + plot_h * (1 - p / y_max)
+
+    def anchor(offset: float) -> str:
+        """Keep date labels inside the plot at either end."""
+        return "start" if offset < 30 else "end" if offset > plot_w - 30 else "middle"
+
+    grid = "".join(
+        f"<line x1='{left}' x2='{width - right}' y1='{y(t):.1f}' y2='{y(t):.1f}' class='grid'/>"
+        f"<text x='{left - 6}' y='{y(t) + 4:.1f}' text-anchor='end'>"
+        f"{t * 100:.{decimals}f}%</text>"
+        for t in ticks
     )
-    pts = " ".join(
-        f"{i * step:.1f},{height - (p / top) * (height - 6) - 3:.1f}"
-        for i, p in enumerate(probs)
-        if p is not None
+    months = []
+    for i, h in enumerate(history):
+        day = dt.date.fromisoformat(h["week"])
+        before = i and dt.date.fromisoformat(history[i - 1]["week"]).month
+        if day.month in (1, 7) and before != day.month:
+            months.append((i, day))
+    months = months or [(0, dt.date.fromisoformat(history[0]["week"]))]
+    labels = "".join(
+        f"<text x='{x(i):.1f}' y='{height - 6}' text-anchor='{anchor(i * step)}'>{day:%b %Y}</text>"
+        for i, day in months
     )
-    base_y = height - (BASE_RATE / top) * (height - 6) - 3
-    first, last = esc(history[0]["week"]), esc(history[-1]["week"])
-    return f"""<figure class="spark"><svg viewBox="0 0 {width} {height}" role="img"
-aria-label="Weekly estimated risk from {first} to {last}">
-{shade}<line x1="0" x2="{width}" y1="{base_y:.1f}" y2="{base_y:.1f}" class="base"/>
-<polyline points="{pts}" class="line"/></svg>
-<figcaption>Weekly estimated 90-day risk, {first} to {last}. Dashed line: typical drug
+    shade, path, run_start, pen_down = "", "", None, False
+    for i, h in enumerate([*history, {"short": False}]):
+        if h["short"] and run_start is None:
+            run_start = i
+        elif not h["short"] and run_start is not None:
+            shade += (
+                f"<rect x='{x(run_start) - step / 2:.1f}' y='{top_pad}' "
+                f"width='{(i - run_start) * step:.1f}' height='{plot_h}' class='short'/>"
+            )
+            run_start = None
+    for i, p in enumerate(probs):
+        if p is None:
+            pen_down = False
+            continue
+        path += f"{'L' if pen_down else 'M'}{x(i):.1f} {y(p):.1f}"
+        pen_down = True
+    last = max(i for i, p in enumerate(probs) if p is not None) if known else None
+    end = (
+        ""
+        if last is None
+        else f"<circle cx='{x(last):.1f}' cy='{y(probs[last]):.1f}' r='3.5' class='end'/>"
+    )
+    first_week, last_week = esc(history[0]["week"]), esc(history[-1]["week"])
+    summary = f"Weekly estimated risk from {first_week} to {last_week}"
+    if known:
+        summary += f": highest {pct(max(known))}, latest {pct(known[-1])}"
+    base_y = y(BASE_RATE)
+    return f"""<figure class="chart"><svg viewBox="0 0 {width} {height}" role="img"
+aria-label="{summary}">
+{shade}{grid}{labels}
+<line x1="{left}" x2="{width - right}" y1="{base_y:.1f}" y2="{base_y:.1f}" class="base"/>
+<path d="{path}" class="line"/>{end}</svg>
+<figcaption>Weekly estimated 90-day risk, {first_week} to {last_week}. Dashed line: typical drug
 ({BASE_RATE * 100:.2f}%). Shaded: weeks on FDA's shortage list.</figcaption></figure>"""
 
 
@@ -163,7 +224,8 @@ def rank_change(e: dict) -> str:
 def risk_bar(e: dict, top: float) -> str:
     """A small bar beside the number; the number and band label carry the meaning."""
     width = 100 * e["prob"] / top
-    return f"<span class='bar {esc(e['band'])}' aria-hidden='true'><i style='width:{width:.0f}%'></i></span>"
+    fill = f"<i style='width:{width:.0f}%'></i>"
+    return f"<span class='bar {esc(e['band'])}' aria-hidden='true'>{fill}</span>"
 
 
 def stat_strip(items: list[tuple[str, str]]) -> str:
@@ -324,13 +386,15 @@ def drug_page(e: dict, data: dict, slugs: dict[str, str]) -> str:
     if e.get("lost_companies"):
         names = ", ".join(esc(n) for n in e["lost_companies"])
         lost = (
-            f"<p>No longer listed compared with about 6 months ago: {names}.</p>"
+            f"<div class='lost'><p>No longer listed compared with about 6 months ago: {names}.</p>"
             "<p class='note'>A listing can end for many reasons, including mergers and "
-            "relabeling. It doesn't always mean a company stopped making the drug.</p>"
+            "relabeling. It doesn't always mean a company stopped making the drug.</p></div>"
         )
     alts = e["alternatives"]
     makers = (
-        ", ".join(esc(x) for x in alts["labelers"]) or "none listed in the latest NDC directory"
+        "<ul class='makers'>" + "".join(f"<li>{esc(x)}</li>" for x in alts["labelers"]) + "</ul>"
+        if alts["labelers"]
+        else "<p>None listed in the latest NDC directory.</p>"
     )
     forms = (
         "".join(
@@ -342,43 +406,70 @@ def drug_page(e: dict, data: dict, slugs: dict[str, str]) -> str:
         )
         or "<li>No other forms listed.</li>"
     )
+    n_companies = "—" if e["n_labelers"] is None else e["n_labelers"]
     if e["in_shortage_now"]:
-        status = (
-            "<p class='status short'>This drug family is on FDA's shortage list now. "
-            "RxRadar only estimates the risk of <em>new</em> shortages, so it is not ranked. "
-            "See <a href='https://www.accessdata.fda.gov/scripts/drugshortages/'>FDA's drug "
-            "shortage database</a> for current status.</p>"
-        )
+        status = f"""<section class="verdict short alert" aria-label="Current status">
+<div class="what"><p class="eyebrow">In shortage now</p>{band_badge(None)}</div>
+<p>This drug family is on FDA's shortage list now. RxRadar only estimates the risk of
+<em>new</em> shortages, so it is not ranked. See
+<a href="https://www.accessdata.fda.gov/scripts/drugshortages/">FDA's drug shortage database</a>
+for current status.</p>
+</section>"""
     else:
-        status = (
-            f"<p class='status'>{band_badge(e['band'])} Estimated chance of a new FDA-listed "
-            f"shortage in the next 90 days: <strong>{pct(e['prob'])}</strong> "
-            f"({e['multiple']}× a typical drug family). Watchlist rank: {e['rank']} of "
-            f"{sum(1 for f in data['families'] if f['rank'])}.</p>"
-        )
-    body = f"""
-<h1>{esc(e["name"])}</h1>
-<p class="sub">{esc(e["form"])} · {esc(e.get("group", "Other"))}</p>
-{status}
-<h2>Why this estimate</h2>
+        n_ranked = sum(1 for f in data["families"] if f["rank"])
+        levels = [name for _, name in reversed(BANDS)]
+        lit = levels.index(e["band"])
+        meter = "".join(f"<i{' class=on' if i <= lit else ''}></i>" for i in range(len(levels)))
+        status = f"""<section class="verdict {esc(e["band"])}" aria-label="Risk estimate">
+<div class="what">
+<p>Estimated chance of a new FDA-listed shortage in the next 90 days</p>
+<p class="figure">{pct(e["prob"])}</p>
+{band_badge(e["band"])}
+<div class="meter" aria-hidden="true">{meter}</div>
+</div>
+<dl>
+<div><dt>Versus a typical drug</dt><dd>{e["multiple"]}×</dd></div>
+<div><dt>Watchlist rank</dt><dd>{e["rank"]} of {n_ranked:,}</dd></div>
+<div><dt>Companies listed</dt><dd>{n_companies}</dd></div>
+</dl>
+</section>"""
+    if e["in_shortage_now"]:  # no estimate is shown, so there is nothing to explain
+        why = f"<h2>Background</h2>{peer}{context}" if peer or context else ""
+    else:
+        why = f"""<h2>Why this estimate</h2>
 <ul>{reasons}</ul>
 {peer}
 {context}
 <p class="note">Reasons are the model's largest contributions for this week, in plain words.
-They describe statistical associations in past data, not causes.</p>
+They describe statistical associations in past data, not causes.</p>"""
+    group = e.get("group", "Other")
+    body = f"""
+<p class="crumbs"><a href="../all.html">All drugs</a> / {esc(group)}</p>
+<h1>{esc(e["name"])}</h1>
+<p class="sub">{esc(e["form"])} · {esc(group)}</p>
+{status}
+<div class="drug-grid">
+<div>
+{why}
 <h2>Risk over time</h2>
-{sparkline(e["history"])}
-<h2>Who makes it</h2>
-<p>{makers}</p>
-{lost}
+{risk_chart(e["history"])}
 <h2>Factory inspections</h2>
 {inspection_section(e.get("inspections"))}
+</div>
+<aside class="facts" aria-label="Supply facts">
+<h2>Who makes it</h2>
+{makers}
+{lost}
 <h2>Other forms of the same ingredient</h2>
 <ul>{forms}</ul>
 <p class="note">These are supply facts from FDA's NDC directory: other companies and other
 forms of the <em>same</em> active ingredient. They are not clinical substitutes. Ask a
-pharmacist or prescriber before any change.</p>"""
-    return page(f"{e['name']}: RxRadar", body, root="../", freshness=data["freshness"])
+pharmacist or prescriber before any change.</p>
+</aside>
+</div>"""
+    return page(
+        f"{e['name']}: RxRadar", body, root="../", freshness=data["freshness"], active="all.html"
+    )
 
 
 def shortages_page(data: dict, slugs: dict[str, str]) -> str:
@@ -389,8 +480,8 @@ def shortages_page(data: dict, slugs: dict[str, str]) -> str:
     )
     body = f"""
 <h1>On FDA's shortage list now</h1>
-<p>{len(short)} drug families that RxRadar can map are listed as current shortages by FDA in
-the latest capture. They are excluded from the watchlist, which only covers <em>new</em>
+<p class="lede">{len(short)} drug families that RxRadar can map are listed as current shortages
+by FDA in the latest capture. They are excluded from the watchlist, which only covers <em>new</em>
 shortages. FDA's <a href="https://www.accessdata.fda.gov/scripts/drugshortages/">drug shortage
 database</a> is the authoritative source.</p>
 <ul class="cols">{items}</ul>"""
@@ -406,17 +497,22 @@ def all_page(data: dict) -> str:
     band_opts = "".join(f"<option>{esc(b)}</option>" for _, b in BANDS)
     body = f"""
 <h1>All drugs</h1>
-<p>Search and filter every drug family RxRadar tracks. Drug groups are for browsing only: being
-in the same group doesn't mean two drugs can replace each other.</p>
+<p class="lede">Search and filter every drug family RxRadar tracks. Drug groups are for browsing
+only: being in the same group doesn't mean two drugs can replace each other.</p>
 <form class="filters" onsubmit="return false">
-<input id="q" type="search" placeholder="Drug name" aria-label="Search by drug name">
-<select id="group" aria-label="Drug group"><option value="">All groups</option>{group_opts}</select>
-<select id="form" aria-label="Form"><option value="">All forms</option>{form_opts}</select>
-<select id="band" aria-label="Risk band"><option value="">All bands</option>{band_opts}</select>
+<div><label for="q">Drug name</label>
+<input id="q" type="search" placeholder="e.g. cisplatin" autocomplete="off"></div>
+<div><label for="group">Drug group</label>
+<select id="group"><option value="">All groups</option>{group_opts}</select></div>
+<div><label for="form">Form</label>
+<select id="form"><option value="">All forms</option>{form_opts}</select></div>
+<div><label for="band">Risk band</label>
+<select id="band"><option value="">All bands</option>{band_opts}</select></div>
 </form>
 <p id="count" class="note" aria-live="polite"></p>
-<div class="table-wrap"><table><thead><tr><th>#</th><th>Drug family</th><th>90-day risk</th>
-<th>Band</th><th class="opt">Group</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th class="num">#</th><th>Drug family</th>
+<th class="num">90-day risk</th><th>Band</th><th class="opt">Group</th></tr></thead>
+<tbody id="rows"></tbody></table></div>
 <script>
 const q = document.getElementById('q'), g = document.getElementById('group'),
   f = document.getElementById('form'), b = document.getElementById('band'),
@@ -438,13 +534,16 @@ function draw() {{
   rows.replaceChildren();
   for (const e of hits.slice(0, 200)) {{
     const tr = document.createElement('tr');
-    cell(tr, e.r ?? '—');
+    cell(tr, e.r ?? '—', 'num');
     const link = document.createElement('a');
     link.href = 'drug/' + e.s + '.html';
     link.textContent = e.n;
     cell(tr, '').append(link);
-    cell(tr, e.b);
-    cell(tr, e.d ?? 'in shortage');
+    cell(tr, e.b, 'num');
+    const badge = document.createElement('span');
+    badge.className = 'badge ' + (e.d ?? 'short');
+    badge.textContent = e.d ?? 'in shortage';
+    cell(tr, '').append(badge);
     cell(tr, e.g, 'opt');
     rows.append(tr);
   }}
@@ -479,23 +578,22 @@ def fragile_page(data: dict) -> str:
     )
 
     def row(e: dict) -> str:
-        status = "in shortage" if e["in_shortage_now"] else esc(e["band"])
         return (
-            f"<tr><td>{drug_link(e)}</td><td>{e['n_labelers']}</td>"
-            f"<td class='opt'>{esc(e['group'])}</td><td>{status}</td></tr>"
+            f"<tr><td>{drug_link(e)}</td><td class='num'>{e['n_labelers']}</td>"
+            f"<td class='opt'>{esc(e['group'])}</td><td>{band_badge(e['band'])}</td></tr>"
         )
 
     head = (
-        "<thead><tr><th>Drug family</th><th>Companies listed</th><th class='opt'>Group</th>"
+        "<thead><tr><th>Drug family</th><th class='num'>Companies</th><th class='opt'>Group</th>"
         "<th>Risk band</th></tr></thead>"
     )
     lost_rows = "".join(row(e) for e in lost[:FRAGILE_LIMIT])
     few_rows = "".join(row(e) for e in few[:FRAGILE_LIMIT])
     body = f"""
 <h1>Fragile supply</h1>
-<p>Plain facts from FDA's NDC directory, not predictions. A drug with few companies listed has
-less backup if one has a problem. That doesn't mean a shortage is coming, and a listed company
-isn't always the one making the drug.</p>
+<p class="lede">Plain facts from FDA's NDC directory, not predictions. A drug with few companies
+listed has less backup if one has a problem. That doesn't mean a shortage is coming, and a
+listed company isn't always the one making the drug.</p>
 <h2>Lost a company in the past 6 months, {LOST_COMPANY_MAX_LEFT} or fewer left ({len(lost)})</h2>
 <div class="table-wrap"><table>{head}<tbody>{lost_rows}</tbody></table></div>
 <h2>Generics with one or two companies listed ({len(few)})</h2>
@@ -514,7 +612,7 @@ def track_page(track: dict | None, data: dict) -> str:
     """Live results only; never mixed with the backtest (decisions D9)."""
     if not track or not track["weeks_frozen"]:
         body = """<h1>Track record</h1>
-<p>Tracking hasn't started yet. Once it does, each week's predictions are saved before
+<p class="lede">Tracking hasn't started yet. Once it does, each week's predictions are saved before
 their outcomes are known, and scored here in public.</p>"""
         return page(
             "Track record: RxRadar", body, freshness=data["freshness"], active="track-record.html"
@@ -570,22 +668,25 @@ their outcomes are known, and scored here in public.</p>"""
             f"<p class='status'><strong>Too early to judge.</strong> {so_far} New FDA-listed "
             "shortages are rare, so these numbers will swing a lot until there are dozens.</p>"
         )
+    stats = stat_strip(
+        [
+            (esc(track["started"]), "tracking began"),
+            (str(track["weeks_frozen"]), "weeks saved"),
+            (str(track["weeks_pending"]), "still inside their 90 days"),
+            (str(track["weeks_scored"]), "weeks scored"),
+            (str(track["onsets_scored"]), "shortages scored"),
+        ]
+    )
     body = f"""
 <h1>Track record</h1>
-<p>Each week's predictions are saved before their outcomes are known, and never changed
-afterwards. The saved files are public, with their timestamps, on the
+<p class="lede">Each week's predictions are saved before their outcomes are known, and never
+changed afterwards. The saved files are public, with their timestamps, on the
 <a href="{REPO_URL}/tree/predictions">predictions branch</a>. These are live results, kept
 separate from the backtest on the <a href="about.html">method page</a>. The
 <a href="{REPO_URL}/blob/main/docs/decisions.md">scoring rules (D9)</a> were published before
 any result existed.</p>
 {early}
-<ul class="stats">
-<li><strong>{esc(track["started"])}</strong> tracking began</li>
-<li><strong>{track["weeks_frozen"]}</strong> weeks saved</li>
-<li><strong>{track["weeks_pending"]}</strong> still inside their 90 days</li>
-<li><strong>{track["weeks_scored"]}</strong> weeks scored</li>
-<li><strong>{track["onsets_scored"]}</strong> shortages scored</li>
-</ul>
+{stats}
 <h2>Shortages flagged at least 4 weeks ahead</h2>
 <div class="table-wrap"><table><thead><tr><th>Watchlist size</th><th>RxRadar</th>
 <th>Simple rule</th><th>Random</th></tr></thead><tbody>{rows}</tbody></table></div>
@@ -605,6 +706,7 @@ and {track["onsets_too_soon"]} shortages began too soon after tracking started t
 
 def about_page(data: dict) -> str:
     body = f"""
+<div class="prose">
 <h1>Method and limits</h1>
 <h2>What the number means</h2>
 <p>For each drug family (same active ingredient, dosage form and route), RxRadar estimates
@@ -636,13 +738,15 @@ since 2014 for history.</li>
 <li>Only shortages FDA lists are counted. Other shortage lists are not used.</li>
 <li>About 3% of FDA's shortage names (mostly multi-ingredient products such as IV
 nutrition and dialysis fluids) can't be matched to a drug family and are missing.</li>
-<li>FDA inspection results are not used yet.</li>
+<li>FDA inspection results are shown on drug pages but don't affect the estimate: a test fixed
+in advance didn't show that they improve it.</li>
 <li>Prices come from retail pharmacies, so hospital injectables often have no price.</li>
 <li>Model: calibrated logistic regression, trained through
 {esc(data["model"]["trained_through"])}.</li>
 </ul>
 <p><strong>Not clinical advice.</strong> RxRadar describes supply risk only. It does not
-recommend treatments or substitutes.</p>"""
+recommend treatments or substitutes.</p>
+</div>"""
     return page(
         "Method and limits: RxRadar", body, freshness=data["freshness"], active="about.html"
     )
