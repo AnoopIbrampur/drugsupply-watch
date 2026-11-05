@@ -63,17 +63,46 @@ def train_mask(df: pd.DataFrame, cutoff: pd.Timestamp, horizon_days: int = HORIZ
     return usable(df) & (df.week + pd.Timedelta(days=horizon_days) < cutoff)
 
 
-def _logistic_matrix(df: pd.DataFrame, medians: pd.Series | None = None):
-    x = df[LOGISTIC_FEATURES].astype(float).copy()
+# Tested against the current model, chosen before seeing results (decisions D11).
+INSPECTION_LOGISTIC_FEATURES = ["insp_oai_3y", "insp_actions_3y", "insp_foreign_share"]
+
+
+def _logistic_matrix(
+    df: pd.DataFrame, medians: pd.Series | None = None, inspections: bool = False
+):
+    extra = INSPECTION_LOGISTIC_FEATURES if inspections else []
+    x = df[LOGISTIC_FEATURES + extra].astype(float).copy()
     for c in x.columns:
         if c.startswith(("hist_onsets", "hist_disc", "hist_siblings", "sup_", "rec_")):
             x[c] = np.log1p(x[c].clip(lower=0))
     x["hist_days_since_listed"] = np.log1p(x.hist_days_since_listed)
     x["never_listed"] = df.hist_days_since_listed.isna().astype(float)
     x["no_price"] = df.px_chg_1y.isna().astype(float)
+    if inspections:
+        x["insp_oai_3y"] = np.log1p(x.insp_oai_3y)
+        x["insp_actions_3y"] = np.log1p(x.insp_actions_3y)
+        x["no_factory_link"] = df.insp_n_factories.isna().astype(float)
     if medians is None:
         medians = x.median()
     return x.fillna(medians).fillna(0), medians
+
+
+def run_logistic(df: pd.DataFrame, inspections: bool, years=TEST_YEARS) -> pd.DataFrame:
+    """Logistic-only walk-forward run, with or without inspection features."""
+    out = []
+    for year in years:
+        cutoff = pd.Timestamp(f"{year}-01-01")
+        tr = df[train_mask(df, cutoff)]
+        te = df[usable(df) & (df.week.dt.year == year)]
+        if te.empty or tr[LABEL].sum() < 20:
+            continue
+        xtr, med = _logistic_matrix(tr, inspections=inspections)
+        xte, _ = _logistic_matrix(te, med, inspections=inspections)
+        lr = make_pipeline(StandardScaler(), LogisticRegression(C=1.0, max_iter=2000))
+        lr.fit(xtr, tr[LABEL])
+        base = te[["week", "family", LABEL, "injectable", "multisource_generic"]].assign(year=year)
+        out.append(base.assign(score=lr.predict_proba(xte)[:, 1]))
+    return pd.concat(out, ignore_index=True)
 
 
 def rule_score(df: pd.DataFrame) -> np.ndarray:

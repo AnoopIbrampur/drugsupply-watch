@@ -1,7 +1,7 @@
 """Build every feature table from the derived tables, in order.
 
-NDC snapshot table -> history, supply, recall and price features, each saved
-as data/derived/features_<name>.parquet. The NADAC aggregation is the slow
+NDC snapshot table -> history, supply, recall, price and inspection features,
+each saved as data/derived/features_<name>.parquet. The NADAC aggregation is the slow
 step (~5 min over 16M rows), so its family-weekly price table is reused when
 present unless ``rebuild_prices`` is set.
 """
@@ -9,17 +9,33 @@ present unless ``rebuild_prices`` is set.
 from __future__ import annotations
 
 import glob
+import json
 import logging
 
 import pandas as pd
 
-from rxradar.features import history, market, prices, recalls
+from rxradar.features import history, inspections, market, prices, recalls
 from rxradar.features.sources import load_listings, load_products
 from rxradar.ingest.openfda import load_results
 from rxradar.paths import data_root, derived_dir, latest_snapshot_dir
 from rxradar.transform.ndc_snapshots import build_snapshot_table
 
 log = logging.getLogger(__name__)
+
+
+def inspection_sources() -> dict[str, pd.DataFrame] | None:
+    """Inspection, action and factory tables, or None until all three exist."""
+    links = derived_dir() / "label_factories.parquet"
+    dash = sorted((data_root() / "raw" / "fda_dashboard").glob("*"))
+    if not links.exists() or not dash:
+        return None
+    insp = json.loads((dash[-1] / "inspections_classifications.json").read_text())
+    actions = json.loads((dash[-1] / "compliance_actions.json").read_text())
+    return {
+        "factories": pd.read_parquet(links),
+        "inspections": inspections.inspection_source(insp),
+        "actions": inspections.action_source(actions),
+    }
 
 
 def build_features(rebuild_prices: bool = False) -> None:
@@ -48,3 +64,5 @@ def build_features(rebuild_prices: bool = False) -> None:
         table = module.build(sources, weeks)
         table.to_parquet(out / f"features_{name}.parquet")
         log.info("features_%s: %s rows", name, len(table))
+    if (insp := inspection_sources()) is not None:
+        inspections.build(insp, weeks).to_parquet(out / "features_inspections.parquet")

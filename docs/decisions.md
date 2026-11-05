@@ -216,3 +216,26 @@ delay (about half of results would count before they were public).
 
 Limit: the OAI delay rests on only 362 dated results, which may not be typical. It's
 a safeguard, not a measurement of each result's publication date.
+
+## D11. Inspection-feature adoption test — FIXED 2026-11-04, before any result
+
+Written before the first backtest with these features was run.
+
+**Compared.** The production logistic model against the same model plus log(1 + failed
+inspections in 3 years), log(1 + enforcement actions in 3 years), the share of factories
+abroad, and a "no linked factory" indicator. Unlinked families get the training median,
+so the indicator carries "unknown". Same test years, labels and hyperparameters.
+
+**Adopt only if** onset recall@100 at a 4-week lead improves and the 95% bootstrap CI of
+the paired per-onset difference excludes zero. Otherwise the production model stays
+unchanged and the result is reported.
+
+**Reported but not used to decide:** LightGBM with and without all inspection features,
+recall@50, and results restricted to onsets whose family had a factory link.
+
+Frozen weekly predictions stay frozen. If adopted, a dated D9 amendment records the change.
+
+**Known limit.** Labels were chosen from labelers that still sell the drug today and from
+families that are generic or injectable today, so companies that left the market are
+missing. This understates history, and it means the sample was chosen with today's
+knowledge. The selection never looks at shortage outcomes.

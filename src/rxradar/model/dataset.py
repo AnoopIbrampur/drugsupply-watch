@@ -30,6 +30,12 @@ def load_dataset() -> pd.DataFrame:
         df = df.merge(f, on=["week", "family"], how="left")
     for c in ZERO_IF_MISSING:
         df[c] = df[c].fillna(0)
+    # Optional until the production model uses it: inspection data is not
+    # guaranteed to be in every environment. NaN means "no linked factory".
+    insp = derived_dir() / "features_inspections.parquet"
+    if insp.exists():
+        f = pd.read_parquet(insp)
+        df = df.merge(f.assign(week=f.week.astype(NS)), on=["week", "family"], how="left")
     df["px_has_price"] = df.px_has_price.fillna(False).astype(bool)
     df["sup_has_brand"] = df.sup_has_brand.fillna(False).astype(bool)
     # Market-wide stress is the same for every family in a week.
