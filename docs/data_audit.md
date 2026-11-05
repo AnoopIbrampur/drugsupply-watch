@@ -415,7 +415,8 @@ hours, about 12 of them running time; the rest was the Mac sleeping.
 Current site: 1,803 of 3,393 families have inspection facts, including 99 of the top 100.
 
 Staying current: inspections refresh weekly when the Data Dashboard secrets are set. Labels
-refresh in rotation, 200 a night, so a full pass takes about 37 days. A local test of 3
-labels worked. **The refresh has not yet run on GitHub's servers, so whether DailyMed allows
-it there is unknown.** The DUNS map can't refresh there, because FDA blocks those files, so
+refresh in rotation, 200 a night, so a full pass takes about 37 days. The first run on
+GitHub's servers (2026-11-05) checked 200 labels with no failures and found 0 new versions,
+so DailyMed allows it. Adding a new version from there hasn't happened yet, and the weekly
+inspection refresh first runs inside the nightly job on Monday. The DUNS map can't refresh there, because FDA blocks those files, so
 new factories stay unmatched until it's rebuilt from a home connection.
