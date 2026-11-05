@@ -24,6 +24,7 @@ import html
 import json
 import os
 import shutil
+from collections import Counter
 from pathlib import Path
 from xml.sax.saxutils import escape as xml_escape
 
@@ -79,8 +80,9 @@ def page(
     if freshness:
         items = ", ".join(f"{esc(k)} {esc(v)}" for k, v in freshness.items())
         fresh = f"<p class='fresh'>Data through: {items}.</p>"
+    current = " aria-current='page'"
     nav = "".join(
-        f"<a href='{root}{href}'{' aria-current=\'page\'' if href == active else ''}>{label}</a>"
+        f"<a href='{root}{href}'{current if href == active else ''}>{label}</a>"
         for href, label in NAV
     )
     return f"""<!doctype html>
@@ -150,8 +152,24 @@ def rank_change(e: dict) -> str:
         return "<span class='new'>new</span>"
     d = e["prev_rank"] - e["rank"]
     if d == 0:
-        return "–"
-    return f"<span class='{'up' if d > 0 else 'down'}'>{'▲' if d > 0 else '▼'}{abs(d)}</span>"
+        return "<span aria-hidden='true'>–</span><span class='sr'>no change</span>"
+    word, arrow, cls = ("up", "▲", "up") if d > 0 else ("down", "▼", "down")
+    return (
+        f"<span class='{cls}'><span aria-hidden='true'>{arrow}</span>"
+        f"<span class='sr'>{word} </span>{abs(d)}</span>"
+    )
+
+
+def risk_bar(e: dict, top: float) -> str:
+    """A small bar beside the number; the number and band label carry the meaning."""
+    width = 100 * e["prob"] / top
+    return f"<span class='bar {esc(e['band'])}' aria-hidden='true'><i style='width:{width:.0f}%'></i></span>"
+
+
+def stat_strip(items: list[tuple[str, str]]) -> str:
+    """``items`` are (number, label) pairs of ready-made HTML."""
+    cells = "".join(f"<li><strong>{num}</strong> {label}</li>" for num, label in items)
+    return f"<ul class='stats'>{cells}</ul>"
 
 
 def main_reason(e: dict) -> str:
@@ -190,37 +208,63 @@ def changes_section(changes: dict | None) -> str:
 
 
 def index_page(data: dict) -> str:
-    ranked = [e for e in data["families"] if e["rank"] is not None]
+    families = data["families"]
+    ranked = [e for e in families if e["rank"] is not None]
+    watchlist = ranked[:WATCHLIST_SIZE]
+    top = max((e["prob"] for e in watchlist), default=1.0)
     rows = "".join(
-        f"<tr><td>{e['rank']}</td><td class='opt'>{rank_change(e)}</td>"
+        f"<tr><td class='num'>{e['rank']}</td><td class='change opt'>{rank_change(e)}</td>"
         f"<td><a href='drug/{esc(e['slug'])}.html'>{esc(e['name'])}</a></td>"
-        f"<td>{pct(e['prob'])}</td><td class='opt'>{e['multiple']}×</td>"
+        f"<td class='num'>{pct(e['prob'])}{risk_bar(e, top)}</td>"
+        f"<td class='num opt'>{e['multiple']}×</td>"
         f"<td>{band_badge(e['band'])}</td>"
         f"<td class='why opt'>{esc(main_reason(e))}</td></tr>"
-        for e in ranked[:WATCHLIST_SIZE]
+        for e in watchlist
     )
-    legend = "".join(f"<li>{band_badge(b)} {esc(BAND_TEXT[b])}</li>" for _, b in BANDS)
-    n_injectable = sum(e["injectable"] for e in ranked[:WATCHLIST_SIZE])
+    counts = Counter(e["band"] for e in ranked)
+    scale = "".join(
+        f"<li class='{esc(b)}'>{band_badge(b)}<br>{esc(BAND_TEXT[b])}<br>"
+        f"{counts[b]:,} {'drug' if counts[b] == 1 else 'drugs'}</li>"
+        for _, b in reversed(BANDS)
+    )
+    n_short = sum(e["in_shortage_now"] for e in families)
+    stats = stat_strip(
+        [
+            (f"{len(families):,}", "drug families tracked"),
+            (f"{counts['high'] + counts['elevated']:,}", "at high or elevated risk"),
+            (f"{n_short:,}", "<a href='shortages.html'>on FDA's shortage list now</a>"),
+            (f"{BASE_RATE * 100:.2f}%", "typical 90-day risk"),
+        ]
+    )
+    n_injectable = sum(e["injectable"] for e in watchlist)
     body = f"""
+<div class="hero">
+<div>
+<p class="eyebrow">Week of {esc(data["week"])}</p>
 <h1>Drug shortage watchlist</h1>
-<p>The {WATCHLIST_SIZE} drug families with the highest estimated chance that a <strong>new</strong>
-FDA-listed shortage starts in the next 90 days, for the week of {esc(data["week"])}.
-A typical family's chance is about {BASE_RATE * 100:.2f}%. Families already in shortage are
-<a href="shortages.html">listed separately</a>.</p>
-<ul class="legend">{legend}</ul>
+<p class="lede">The {WATCHLIST_SIZE} drug families with the highest estimated chance that a
+<strong>new</strong> FDA-listed shortage starts in the next 90 days. Families already in shortage
+are <a href="shortages.html">listed separately</a>.</p>
+</div>
+<div class="lookup">
+<label for="q">Look up any drug</label>
+<input id="q" type="search" placeholder="e.g. cisplatin, amoxicillin" autocomplete="off">
+<ul id="results"></ul>
+</div>
+</div>
+{stats}
+<h2>How risk is graded</h2>
+<ol class="scale">{scale}</ol>
 {changes_section(data.get("changes"))}
 <h2>Top {WATCHLIST_SIZE}</h2>
 <p class="note">{n_injectable} of these {WATCHLIST_SIZE} are sterile injectables, which shows how
 strongly drug type drives risk. To see tablets, capsules and other forms, use
-<a href="all.html">All drugs</a>.</p>
+<a href="all.html">All drugs</a>. Bars are scaled to the top drug on this list.</p>
 <div class="table-wrap"><table>
-<thead><tr><th>#</th><th class="opt">Δ wk</th><th>Drug family</th><th>90-day risk</th>
-<th class="opt">vs typical</th><th>Band</th><th class="opt">Main reason</th></tr></thead>
+<thead><tr><th class="num">#</th><th class="opt">Δ wk</th><th>Drug family</th>
+<th class="num">90-day risk</th><th class="num opt">vs typical</th><th>Band</th>
+<th class="opt">Main reason</th></tr></thead>
 <tbody>{rows}</tbody></table></div>
-<h2>Look up any drug</h2>
-<input id="q" type="search" placeholder="e.g. cisplatin, amoxicillin"
-  aria-label="Search drug families">
-<ul id="results"></ul>
 <script>
 const box = document.getElementById('q'), out = document.getElementById('results');
 let idx = null;
@@ -229,16 +273,26 @@ box.addEventListener('input', async () => {{
   const q = box.value.trim().toLowerCase();
   out.replaceChildren();
   if (q.length < 2) return;
-  for (const e of idx.filter(e => e.n.toLowerCase().includes(q)).slice(0, 20)) {{
-    const li = document.createElement('li'), a = document.createElement('a');
+  const hits = idx.filter(e => e.n.toLowerCase().includes(q)).slice(0, 20);
+  if (!hits.length) {{
+    const li = document.createElement('li');
+    li.textContent = 'No drug family matches that name.';
+    out.append(li);
+  }}
+  for (const e of hits) {{
+    const li = document.createElement('li'), a = document.createElement('a'),
+      risk = document.createElement('span');
     a.href = 'drug/' + e.s + '.html';
     a.textContent = e.n;
-    li.append(a, document.createTextNode(' ' + e.b));
+    risk.textContent = e.b;
+    li.append(a, risk);
     out.append(li);
   }}
 }});
 </script>"""
-    return page("RxRadar: drug shortage watchlist", body, freshness=data["freshness"], active="index.html")
+    return page(
+        "RxRadar: drug shortage watchlist", body, freshness=data["freshness"], active="index.html"
+    )
 
 
 def inspection_section(facts: dict | None) -> str:
@@ -340,7 +394,9 @@ the latest capture. They are excluded from the watchlist, which only covers <em>
 shortages. FDA's <a href="https://www.accessdata.fda.gov/scripts/drugshortages/">drug shortage
 database</a> is the authoritative source.</p>
 <ul class="cols">{items}</ul>"""
-    return page("In shortage now: RxRadar", body, freshness=data["freshness"], active="shortages.html")
+    return page(
+        "In shortage now: RxRadar", body, freshness=data["freshness"], active="shortages.html"
+    )
 
 
 def all_page(data: dict) -> str:
@@ -460,7 +516,9 @@ def track_page(track: dict | None, data: dict) -> str:
         body = """<h1>Track record</h1>
 <p>Tracking hasn't started yet. Once it does, each week's predictions are saved before
 their outcomes are known, and scored here in public.</p>"""
-        return page("Track record: RxRadar", body, freshness=data["freshness"], active="track-record.html")
+        return page(
+            "Track record: RxRadar", body, freshness=data["freshness"], active="track-record.html"
+        )
     s = track["summary"]
     rows = "".join(
         f"<tr><td>Top {k}</td><td>{rate(s[f'recall@{k}'])}</td>"
@@ -540,7 +598,9 @@ any result existed.</p>
 <p class="note">The simple rule ranks drugs by recent shortages, injectable form, few makers and
 shortages in other forms. {track["weeks_unknown"]} weeks are unscorable because of data gaps,
 and {track["onsets_too_soon"]} shortages began too soon after tracking started to score.</p>"""
-    return page("Track record: RxRadar", body, freshness=data["freshness"], active="track-record.html")
+    return page(
+        "Track record: RxRadar", body, freshness=data["freshness"], active="track-record.html"
+    )
 
 
 def about_page(data: dict) -> str:
@@ -583,7 +643,9 @@ nutrition and dialysis fluids) can't be matched to a drug family and are missing
 </ul>
 <p><strong>Not clinical advice.</strong> RxRadar describes supply risk only. It does not
 recommend treatments or substitutes.</p>"""
-    return page("Method and limits: RxRadar", body, freshness=data["freshness"], active="about.html")
+    return page(
+        "Method and limits: RxRadar", body, freshness=data["freshness"], active="about.html"
+    )
 
 
 def feed(data: dict, base_url: str) -> str:
