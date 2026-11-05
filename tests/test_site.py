@@ -229,3 +229,24 @@ def test_inspection_section_keeps_unknown_apart_from_clean():
     text = inspection_section({"factories": 1, "inspected": 1, "failed_3y": 1, "actions_3y": 0})
     assert "1 factory" in text
     assert "isn't\na current safety warning" in text
+
+
+def test_site_loads_nothing_from_other_hosts(tmp_path):
+    out = build_site(scores(tmp_path), tmp_path / "public")
+    assert (out / "fonts" / "public-sans-latin-wght-normal.woff2").exists()
+    for name in ("index.html", "style.css", "drug/evil.html"):
+        text = (out / name).read_text()
+        assert "googleapis" not in text and "gstatic" not in text
+
+
+def test_chart_axis_is_round_and_a_missing_week_is_a_gap():
+    from rxradar.site.build import axis_ticks, risk_chart
+
+    assert axis_ticks(0.01)[0][-1] >= 0.01 and axis_ticks(0.01)[1] == 1
+    ticks, decimals = axis_ticks(0.0787)
+    assert ticks[-1] >= 0.0787 and len(ticks) <= 6 and decimals == 0
+    week = [{"week": f"2026-01-{d:02d}", "short": False} for d in (5, 12, 19, 26)]
+    probs = [0.01, None, 0.02, 0.03]
+    svg = risk_chart([{**w, "prob": p} for w, p in zip(week, probs, strict=True)])
+    path = svg.split('<path d="')[1].split('"')[0]
+    assert path.count("M") == 2 and path.count("L") == 1  # the line lifts over the gap
