@@ -1,10 +1,11 @@
 """Build the static site from data/site_data/scores.json into public/.
 
-Plain HTML + one stylesheet; the only JavaScript is the search box on the
-home page. Every value is HTML-escaped. Pages:
+Plain HTML + one stylesheet + two self-hosted fonts, so visitors make no
+third-party requests; the only JavaScript is the search on the home and All
+drugs pages. Every value is HTML-escaped. Pages:
 - index.html: top-50 watchlist, band legend, search over every family;
 - drug/<slug>.html: one page per family (risk, reasons, 2-year history
-  sparkline, makers and other forms of the same ingredient);
+  chart, makers and other forms of the same ingredient);
 - all.html: search and filter every family;
 - fragile.html: drugs with few listed companies, or that recently lost one;
 - shortages.html: families on FDA's shortage list now (not ranked);
@@ -41,6 +42,17 @@ DISCLAIMER = (
     "Most drugs on the watchlist will <em>not</em> go into shortage. In testing, about 1 in 50 "
     "flagged drug-weeks was followed by a new FDA-listed shortage within 90 days."
 )
+RADAR_MARK = """<svg viewBox="0 0 32 32" aria-hidden="true"><g fill="none"
+stroke="var(--ink)" stroke-width="2"><circle cx="16" cy="16" r="14"/><circle cx="16" cy="16"
+r="7.5"/><path d="M16 16 28 9"/></g><circle cx="22.5" cy="9.5" r="3.5" fill="currentColor"/></svg>"""
+NAV = (
+    ("index.html", "Watchlist"),
+    ("all.html", "All drugs"),
+    ("fragile.html", "Fragile supply"),
+    ("shortages.html", "In shortage now"),
+    ("track-record.html", "Track record"),
+    ("about.html", "Method &amp; limits"),
+)
 BAND_TEXT = {
     "high": "8× or more the typical risk",
     "elevated": "4–8× the typical risk",
@@ -59,29 +71,41 @@ def pct(p: float | None) -> str:
     return f"{p * 100:.1f}%" if p >= 0.001 else "<0.1%"
 
 
-def page(title: str, body: str, root: str = "", freshness: dict | None = None) -> str:
+def page(
+    title: str, body: str, root: str = "", freshness: dict | None = None, active: str = ""
+) -> str:
+    """The shell every page shares. ``active`` is the NAV file to mark as current."""
     fresh = ""
     if freshness:
         items = ", ".join(f"{esc(k)} {esc(v)}" for k, v in freshness.items())
         fresh = f"<p class='fresh'>Data through: {items}.</p>"
+    nav = "".join(
+        f"<a href='{root}{href}'{' aria-current=\'page\'' if href == active else ''}>{label}</a>"
+        for href, label in NAV
+    )
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{esc(title)}</title>
+<link rel="icon" href="{root}favicon.svg" type="image/svg+xml">
+<link rel="preload" href="{root}fonts/public-sans-latin-wght-normal.woff2" as="font"
+  type="font/woff2" crossorigin>
 <link rel="stylesheet" href="{root}style.css">
 <link rel="alternate" type="application/rss+xml" title="RxRadar watchlist" href="{root}feed.xml">
 </head><body>
-<header><a class="brand" href="{root}index.html">{SITE_TITLE}</a>
-<nav><a href="{root}index.html">Watchlist</a><a href="{root}all.html">All drugs</a>
-<a href="{root}fragile.html">Fragile supply</a><a href="{root}shortages.html">In shortage now</a>
-<a href="{root}track-record.html">Track record</a><a href="{root}about.html">Method &amp;
-limits</a><a href="{root}feed.xml">RSS</a></nav></header>
-<main>
-<p class="disclaimer">{DISCLAIMER}</p>
+<a class="skip" href="#main">Skip to content</a>
+<header class="masthead"><div class="wrap">
+<a class="brand" href="{root}index.html">{RADAR_MARK}{SITE_TITLE}</a>
+<nav aria-label="Main">{nav}</nav>
+</div></header>
+<div class="disclaimer"><p class="wrap">{DISCLAIMER}</p></div>
+<main id="main" class="wrap">
 {body}
 </main>
-<footer>{fresh}<p>Built from public US government data (openFDA, FDA, data.medicaid.gov) and
-Internet Archive copies of FDA's own shortage page. Free and non-commercial.</p></footer>
+<footer><div class="wrap">{fresh}<p>Built from public US government data (openFDA, FDA,
+data.medicaid.gov) and Internet Archive copies of FDA's own shortage page. Free and
+non-commercial. <a href="{root}feed.xml">RSS feed</a> · <a href="{REPO_URL}">Source code</a></p>
+</div></footer>
 </body></html>
 """
 
@@ -214,7 +238,7 @@ box.addEventListener('input', async () => {{
   }}
 }});
 </script>"""
-    return page("RxRadar: drug shortage watchlist", body, freshness=data["freshness"])
+    return page("RxRadar: drug shortage watchlist", body, freshness=data["freshness"], active="index.html")
 
 
 def inspection_section(facts: dict | None) -> str:
@@ -316,7 +340,7 @@ the latest capture. They are excluded from the watchlist, which only covers <em>
 shortages. FDA's <a href="https://www.accessdata.fda.gov/scripts/drugshortages/">drug shortage
 database</a> is the authoritative source.</p>
 <ul class="cols">{items}</ul>"""
-    return page("In shortage now: RxRadar", body, freshness=data["freshness"])
+    return page("In shortage now: RxRadar", body, freshness=data["freshness"], active="shortages.html")
 
 
 def all_page(data: dict) -> str:
@@ -372,7 +396,7 @@ function draw() {{
 fetch('search.json').then(r => r.json()).then(d => {{ all = d; draw(); }});
 [q, g, f, b].forEach(el => el.addEventListener('input', draw));
 </script>"""
-    return page("All drugs: RxRadar", body, freshness=data["freshness"])
+    return page("All drugs: RxRadar", body, freshness=data["freshness"], active="all.html")
 
 
 def is_fragile(e: dict) -> bool:
@@ -423,7 +447,7 @@ isn't always the one making the drug.</p>
 <p class="note">Lists show up to {FRAGILE_LIMIT} drugs. Company names are compared loosely, so a
 merger or rename can appear as a lost company, and many listed companies are repackagers rather
 than manufacturers.</p>"""
-    return page("Fragile supply: RxRadar", body, freshness=data["freshness"])
+    return page("Fragile supply: RxRadar", body, freshness=data["freshness"], active="fragile.html")
 
 
 def rate(x: float | None) -> str:
@@ -436,7 +460,7 @@ def track_page(track: dict | None, data: dict) -> str:
         body = """<h1>Track record</h1>
 <p>Tracking hasn't started yet. Once it does, each week's predictions are saved before
 their outcomes are known, and scored here in public.</p>"""
-        return page("Track record: RxRadar", body, freshness=data["freshness"])
+        return page("Track record: RxRadar", body, freshness=data["freshness"], active="track-record.html")
     s = track["summary"]
     rows = "".join(
         f"<tr><td>Top {k}</td><td>{rate(s[f'recall@{k}'])}</td>"
@@ -516,7 +540,7 @@ any result existed.</p>
 <p class="note">The simple rule ranks drugs by recent shortages, injectable form, few makers and
 shortages in other forms. {track["weeks_unknown"]} weeks are unscorable because of data gaps,
 and {track["onsets_too_soon"]} shortages began too soon after tracking started to score.</p>"""
-    return page("Track record: RxRadar", body, freshness=data["freshness"])
+    return page("Track record: RxRadar", body, freshness=data["freshness"], active="track-record.html")
 
 
 def about_page(data: dict) -> str:
@@ -559,7 +583,7 @@ nutrition and dialysis fluids) can't be matched to a drug family and are missing
 </ul>
 <p><strong>Not clinical advice.</strong> RxRadar describes supply risk only. It does not
 recommend treatments or substitutes.</p>"""
-    return page("Method and limits: RxRadar", body, freshness=data["freshness"])
+    return page("Method and limits: RxRadar", body, freshness=data["freshness"], active="about.html")
 
 
 def feed(data: dict, base_url: str) -> str:
@@ -612,7 +636,7 @@ def build_site(scores_path: Path | None = None, out: Path | None = None) -> Path
     if out.exists():
         shutil.rmtree(out)
     (out / "drug").mkdir(parents=True)
-    shutil.copy(Path(__file__).parent / "static" / "style.css", out / "style.css")
+    shutil.copytree(Path(__file__).parent / "static", out, dirs_exist_ok=True)
     slugs = {e["family"]: e["slug"] for e in data["families"]}
     (out / "index.html").write_text(index_page(data))
     (out / "shortages.html").write_text(shortages_page(data, slugs))
