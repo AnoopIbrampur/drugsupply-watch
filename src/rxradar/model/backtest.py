@@ -67,9 +67,7 @@ def train_mask(df: pd.DataFrame, cutoff: pd.Timestamp, horizon_days: int = HORIZ
 INSPECTION_LOGISTIC_FEATURES = ["insp_oai_3y", "insp_actions_3y", "insp_foreign_share"]
 
 
-def _logistic_matrix(
-    df: pd.DataFrame, medians: pd.Series | None = None, inspections: bool = False
-):
+def _logistic_matrix(df: pd.DataFrame, medians: pd.Series | None = None, inspections: bool = False):
     extra = INSPECTION_LOGISTIC_FEATURES if inspections else []
     x = df[LOGISTIC_FEATURES + extra].astype(float).copy()
     for c in x.columns:

@@ -23,19 +23,30 @@ from rxradar.transform.ndc_snapshots import build_snapshot_table
 log = logging.getLogger(__name__)
 
 
+def refresh_inspection_tables() -> None:
+    """Save the newest Data Dashboard download as compact tables in the saved
+    state. It's only fetched weekly, so other nights have no raw copy to read."""
+    out = derived_dir()
+    dash = sorted((data_root() / "raw" / "fda_dashboard").glob("*"))
+    if not dash:
+        return
+    rows = json.loads((dash[-1] / "inspections_classifications.json").read_text())
+    inspections.inspection_source(rows).to_parquet(out / "inspection_events.parquet")
+    rows = json.loads((dash[-1] / "compliance_actions.json").read_text())
+    inspections.action_source(rows).to_parquet(out / "action_events.parquet")
+
+
 def inspection_sources() -> dict[str, pd.DataFrame] | None:
     """Inspection, action and factory tables, or None until all three exist."""
-    links = derived_dir() / "label_factories.parquet"
-    dash = sorted((data_root() / "raw" / "fda_dashboard").glob("*"))
-    if not links.exists() or not dash:
-        return None
-    insp = json.loads((dash[-1] / "inspections_classifications.json").read_text())
-    actions = json.loads((dash[-1] / "compliance_actions.json").read_text())
-    return {
-        "factories": pd.read_parquet(links),
-        "inspections": inspections.inspection_source(insp),
-        "actions": inspections.action_source(actions),
+    out = derived_dir()
+    paths = {
+        "factories": out / "label_factories.parquet",
+        "inspections": out / "inspection_events.parquet",
+        "actions": out / "action_events.parquet",
     }
+    if not all(p.exists() for p in paths.values()):
+        return None
+    return {name: pd.read_parquet(p) for name, p in paths.items()}
 
 
 def build_features(rebuild_prices: bool = False) -> None:
@@ -64,5 +75,6 @@ def build_features(rebuild_prices: bool = False) -> None:
         table = module.build(sources, weeks)
         table.to_parquet(out / f"features_{name}.parquet")
         log.info("features_%s: %s rows", name, len(table))
+    refresh_inspection_tables()
     if (insp := inspection_sources()) is not None:
         inspections.build(insp, weeks).to_parquet(out / "features_inspections.parquet")

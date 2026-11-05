@@ -391,3 +391,31 @@ Data surprises found while building this:
   in 2022–23. It is excluded.
 - **Class listings would need a new design:** one listing covering several families can't
   be expressed with today's one-name-one-family mapping.
+
+## DailyMed label history and factory links (2026-11-04)
+
+Run: 7,351 labels chosen from 2,128 generic or injectable families (up to 5 labelers each),
+30,085 label versions, no failed labels, 4 retried connection errors. It took about 25
+hours, about 12 of them running time; the rest was the Mac sleeping.
+
+- 7,346 labels had a set ID. 21,661 of 30,085 versions (72%) listed an establishment DUNS.
+- 1,383 of 1,925 distinct DUNS (72%) resolved to an FEI. The rest may be closed plants or
+  plants missing from today's registration files.
+- Coverage is lower than the pilot suggested because the pilot's denominator was the
+  sampled pool, while this one is every family in the panel:
+
+| Week | Panel families | With a label | With a factory | With an inspected factory |
+|---|---|---|---|---|
+| 2017-01 | 2,685 | 49% | 35% | 35% |
+| 2019-01 | 2,860 | 54% | 42% | 41% |
+| 2021-01 | 3,004 | 57% | 47% | 46% |
+| 2023-01 | 3,120 | 59% | 51% | 51% |
+| 2026-01 | 3,340 | 60% | 53% | 52% |
+
+Current site: 1,803 of 3,393 families have inspection facts, including 99 of the top 100.
+
+Staying current: inspections refresh weekly when the Data Dashboard secrets are set. Labels
+refresh in rotation, 200 a night, so a full pass takes about 37 days. A local test of 3
+labels worked. **The refresh has not yet run on GitHub's servers, so whether DailyMed allows
+it there is unknown.** The DUNS map can't refresh there, because FDA blocks those files, so
+new factories stay unmatched until it's rebuilt from a home connection.

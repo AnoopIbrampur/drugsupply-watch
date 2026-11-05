@@ -56,6 +56,20 @@ def model_path():
     return derived_dir() / "model.json"
 
 
+def inspection_facts(row: pd.Series) -> dict | None:
+    """Plain counts for the drug page. None means no factory link: unknown,
+    never a clean record. Not model inputs (decisions D11)."""
+    n = row.get("insp_n_factories")
+    if n is None or pd.isna(n):
+        return None
+    return {
+        "factories": int(n),
+        "inspected": int(row.insp_n_inspected),
+        "failed_3y": int(row.insp_oai_3y),
+        "actions_3y": int(row.insp_actions_3y),
+    }
+
+
 def site_data_dir():
     path = data_root() / "site_data"
     path.mkdir(parents=True, exist_ok=True)
@@ -156,6 +170,7 @@ def score(model: ProductionModel | None = None) -> dict:
                     None if pd.isna(row.sup_n_generic_labelers) else int(row.sup_n_generic_labelers)
                 ),
                 "lost_companies": lost.get(fam, []),
+                "inspections": inspection_facts(row),
                 "n_labelers": None if pd.isna(row.sup_n_labelers) else int(row.sup_n_labelers),
                 "injectable": bool(row.injectable),
                 "alternatives": alts.get(fam, {"labelers": [], "other_forms": []}),

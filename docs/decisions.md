@@ -239,3 +239,22 @@ Frozen weekly predictions stay frozen. If adopted, a dated D9 amendment records 
 families that are generic or injectable today, so companies that left the market are
 missing. This understates history, and it means the sample was chosen with today's
 knowledge. The selection never looks at shortage outcomes.
+
+### D11 result, 2026-11-04: not adopted
+
+Logistic, onset recall@100 at a 4-week lead, 186 onsets: 0.231 without, 0.220 with.
+Paired difference -0.011, 95% CI [-0.043, +0.022]. The test failed, so the production
+model is unchanged. Both baselines matched the earlier published results exactly.
+
+Reported, not used to decide:
+
+| Model, k | Onsets | Without | With | Difference [95% CI] |
+|---|---|---|---|---|
+| Logistic, 100, linked families only | 130 | 0.277 | 0.238 | -0.038 [-0.077, +0.000] |
+| Logistic, 50 | 186 | 0.129 | 0.145 | +0.016 [+0.000, +0.038] |
+| LightGBM, 100 | 186 | 0.204 | 0.242 | +0.038 [-0.011, +0.086] |
+| LightGBM, 50 | 186 | 0.118 | 0.134 | +0.016 [-0.027, +0.059] |
+
+LightGBM's gain is not a reason to switch: its CI includes zero, and with inspection data
+it only reaches about the current logistic model's level. These secondary rows were
+looked at after the fact, so none of them counts as evidence that inspections help.

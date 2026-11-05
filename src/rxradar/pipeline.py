@@ -92,6 +92,16 @@ def nightly(today: dt.date | None = None) -> None:
         except Exception:
             log.exception("NADAC refresh failed; keeping previous prices")
             failed.append("nadac")
+        try:
+            ingest("dashboard")
+        except Exception:
+            log.exception("Data Dashboard refresh failed; keeping previous inspections")
+            failed.append("dashboard")
+    try:
+        refresh_labels()
+    except Exception:
+        log.exception("label refresh failed; keeping previous factory links")
+        failed.append("dailymed")
     build_all(features=False)
     build_features()
     if today.day == 1 or not (derived_dir() / "model.json").exists():
@@ -100,6 +110,15 @@ def nightly(today: dt.date | None = None) -> None:
     build_site()
     if failed:
         log.warning("nightly finished with stale sources: %s", ", ".join(failed))
+
+
+def refresh_labels() -> None:
+    from rxradar.http import PoliteClient
+    from rxradar.transform.label_factories import refresh_batch
+
+    if (derived_dir() / "duns_fei.parquet").exists():
+        added = refresh_batch(PoliteClient(min_interval=1.0))
+        log.info("label refresh: %s new versions", added)
 
 
 def refresh_prices(year: int) -> None:

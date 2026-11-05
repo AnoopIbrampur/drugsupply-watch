@@ -217,6 +217,24 @@ box.addEventListener('input', async () => {{
     return page("RxRadar: drug shortage watchlist", body, freshness=data["freshness"])
 
 
+def inspection_section(facts: dict | None) -> str:
+    if facts is None:
+        return """<p>RxRadar hasn't linked this drug to a factory, so its inspection record is
+unknown. That doesn't mean the record is clean.</p>
+<p class="note">Links exist only for some generic and injectable drugs, from up to 5 companies'
+labels each.</p>"""
+    n = facts["factories"]
+    return f"""<p>Labels for this drug list {n} {"factory" if n == 1 else "factories"} that RxRadar
+matched to FDA records. FDA has drug-quality inspection results for {facts["inspected"]} of them.
+In the past 3 years of public results, {facts["failed_3y"]} had an inspection classified Official
+Action Indicated (OAI), and {facts["actions_3y"]} had a warning letter, injunction or seizure.</p>
+<p class="note">OAI means FDA found significant problems at the time of that inspection. It isn't
+a current safety warning: the problems may have been fixed, and they may involve other products
+made at the same factory. This list can be incomplete, because labels may name only some sites
+and RxRadar reads only some labels. Results can appear here up to about 2 years late, because
+FDA doesn't say when most were released. These facts don't affect the risk estimate.</p>"""
+
+
 def drug_page(e: dict, data: dict, slugs: dict[str, str]) -> str:
     reasons = "".join(f"<li>{esc(r)}</li>" for r in e["reasons"])
     reasons = reasons or (
@@ -275,6 +293,8 @@ They describe statistical associations in past data, not causes.</p>
 <h2>Who makes it</h2>
 <p>{makers}</p>
 {lost}
+<h2>Factory inspections</h2>
+{inspection_section(e.get("inspections"))}
 <h2>Other forms of the same ingredient</h2>
 <ul>{forms}</ul>
 <p class="note">These are supply facts from FDA's NDC directory: other companies and other

@@ -160,6 +160,21 @@ anything.
 2. **Today's NDC files were nearly used for past supply features.** The
    archive comparison above showed they misstate 2016–2019 badly.
 
+### Inspection data (Phase 3b): tested, not adopted
+
+Adding FDA inspection and enforcement history did not improve the production model:
+recall@100 at a 4-week lead went from 0.231 to 0.220, paired difference -0.011
+[-0.043, +0.022]. The test was fixed before the run (decisions D11). What limits this test:
+- Only 35% (2017) to 53% (2026) of families have a factory link. 130 of the 186 onsets did.
+- 2,146 of 2,541 failed inspections have no dated classification letter, so they count
+  only after a safety delay of 877 days, based on 362 dated results. Recent failures are
+  invisible to the features, and this may be why they don't help.
+- Labels came from companies still selling the drug today, so departed ones are missing.
+
+So this says inspections didn't help as measured here, not that plant quality is
+unrelated to shortages. Inspection counts appear on drug pages as facts and don't affect
+the risk estimate.
+
 ## Intended use and limits
 
 - The output is a ranked watchlist of supply risk. With precision around

@@ -220,3 +220,12 @@ def test_lost_company_section_only_counts_when_few_remain(tmp_path):
     assert lost_a_company({**base, "n_labelers": 3})
     assert not lost_a_company({**base, "n_labelers": 12})
     assert not lost_a_company({**base, "n_labelers": 2, "lost_companies": []})
+
+
+def test_inspection_section_keeps_unknown_apart_from_clean():
+    from rxradar.site.build import inspection_section
+
+    assert "doesn't mean the record is clean" in inspection_section(None)
+    text = inspection_section({"factories": 1, "inspected": 1, "failed_3y": 1, "actions_3y": 0})
+    assert "1 factory" in text
+    assert "isn't\na current safety warning" in text

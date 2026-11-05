@@ -102,6 +102,18 @@ def _label_xml(client: PoliteClient, set_id: str, version: int) -> str:
         return zf.read(name).decode("utf-8", "replace")
 
 
+def latest_version(client: PoliteClient, set_id: str, known: int) -> dict | None:
+    """The label's newest version if it's newer than ``known``, else None."""
+    history = client.get_json(f"{API}/spls/{set_id}/history.json")["data"]["history"]
+    newest = max(history, key=lambda h: h["spl_version"])
+    version = newest["spl_version"]
+    if version <= known:
+        return None
+    published = pd.Timestamp(newest["published_date"]).date().isoformat()
+    duns = establishment_duns(_label_xml(client, set_id, version))
+    return {"version": version, "published": published, "duns": duns}
+
+
 def ingest(client: PoliteClient, selected: pd.DataFrame, last_year: int) -> None:
     out = output_dir()
     labels_path, versions_path = out / "labels.jsonl", out / "versions.jsonl"
