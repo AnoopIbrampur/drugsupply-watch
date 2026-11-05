@@ -33,6 +33,8 @@ from rxradar.model.production import BANDS, BASE_RATE
 from rxradar.track import KS, MIN_ONSETS_FOR_BANDS
 
 WATCHLIST_SIZE = 50
+MAKERS_SHOWN = 8
+FORMS_SHOWN = 4
 FRAGILE_LIMIT = 300
 LOST_COMPANY_MAX_LEFT = 3
 FORM_FILTERS = ("Injection", "Tablet", "Capsule", "Liquid", "Other")
@@ -91,6 +93,8 @@ def page(
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{esc(title)}</title>
+<meta name="theme-color" content="#f8f7f3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12161c" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="{root}favicon.svg" type="image/svg+xml">
 <link rel="preload" href="{root}fonts/public-sans-latin-wght-normal.woff2" as="font"
   type="font/woff2" crossorigin>
@@ -228,6 +232,16 @@ def risk_bar(e: dict, top: float) -> str:
     return f"<span class='bar {esc(e['band'])}' aria-hidden='true'>{fill}</span>"
 
 
+def show_more(items: list[str], keep: int, noun: str, css: str = "") -> str:
+    """A list cut to its first ``keep`` items, with the rest behind a native
+    disclosure, so a page leads with the common case and needs no JavaScript."""
+    cls = f" class='{css}'" if css else ""
+    first = "".join(f"<li>{i}</li>" for i in items[:keep])
+    rest = "".join(f"<li>{i}</li>" for i in items[keep:])
+    more = f"<details><summary>Show all {len(items)} {noun}</summary><ul{cls}>{rest}</ul></details>"
+    return f"<ul{cls}>{first}</ul>" + (more if rest else "")
+
+
 def stat_strip(items: list[tuple[str, str]]) -> str:
     """``items`` are (number, label) pairs of ready-made HTML."""
     cells = "".join(f"<li><strong>{num}</strong> {label}</li>" for num, label in items)
@@ -302,7 +316,7 @@ def index_page(data: dict) -> str:
     body = f"""
 <div class="hero">
 <div>
-<p class="eyebrow">Week of {esc(data["week"])}</p>
+<p class="dateline">Week of {esc(data["week"])}</p>
 <h1>Drug shortage watchlist</h1>
 <p class="lede">The {WATCHLIST_SIZE} drug families with the highest estimated chance that a
 <strong>new</strong> FDA-listed shortage starts in the next 90 days. Families already in shortage
@@ -315,13 +329,12 @@ are <a href="shortages.html">listed separately</a>.</p>
 </div>
 </div>
 {stats}
-<h2>How risk is graded</h2>
-<ol class="scale">{scale}</ol>
 {changes_section(data.get("changes"))}
 <h2>Top {WATCHLIST_SIZE}</h2>
 <p class="note">{n_injectable} of these {WATCHLIST_SIZE} are sterile injectables, which shows how
 strongly drug type drives risk. To see tablets, capsules and other forms, use
 <a href="all.html">All drugs</a>. Bars are scaled to the top drug on this list.</p>
+<details><summary>How risk is graded</summary><ol class="scale">{scale}</ol></details>
 <div class="table-wrap"><table>
 <thead><tr><th class="num">#</th><th class="opt">Δ wk</th><th>Drug family</th>
 <th class="num">90-day risk</th><th class="num opt">vs typical</th><th>Band</th>
@@ -330,8 +343,10 @@ strongly drug type drives risk. To see tablets, capsules and other forms, use
 <script>
 const box = document.getElementById('q'), out = document.getElementById('results');
 let idx = null;
+const load = async () => idx ??= await (await fetch('search.json')).json();
+box.addEventListener('focus', load, {{once: true}});  // ready before the first keystroke
 box.addEventListener('input', async () => {{
-  if (!idx) idx = await (await fetch('search.json')).json();
+  await load();
   const q = box.value.trim().toLowerCase();
   out.replaceChildren();
   if (q.length < 2) return;
@@ -370,9 +385,11 @@ In the past 3 years of public results, {facts["failed_3y"]} had an inspection cl
 Action Indicated (OAI), and {facts["actions_3y"]} had a warning letter, injunction or seizure.</p>
 <p class="note">OAI means FDA found significant problems at the time of that inspection. It isn't
 a current safety warning: the problems may have been fixed, and they may involve other products
-made at the same factory. This list can be incomplete, because labels may name only some sites
-and RxRadar reads only some labels. Results can appear here up to about 2 years late, because
-FDA doesn't say when most were released. These facts don't affect the risk estimate.</p>"""
+made at the same factory.</p>
+<details><summary>Limits of this list</summary>
+<p class="note">This list can be incomplete, because labels may name only some sites and RxRadar
+reads only some labels. Results can appear here up to about 2 years late, because FDA doesn't say
+when most were released. These facts don't affect the risk estimate.</p></details>"""
 
 
 def drug_page(e: dict, data: dict, slugs: dict[str, str]) -> str:
@@ -392,24 +409,22 @@ def drug_page(e: dict, data: dict, slugs: dict[str, str]) -> str:
         )
     alts = e["alternatives"]
     makers = (
-        "<ul class='makers'>" + "".join(f"<li>{esc(x)}</li>" for x in alts["labelers"]) + "</ul>"
+        show_more([esc(x) for x in alts["labelers"]], MAKERS_SHOWN, "companies", "makers")
         if alts["labelers"]
         else "<p>None listed in the latest NDC directory.</p>"
     )
-    forms = (
-        "".join(
-            f"<li><a href='{esc(slugs[o['family']])}.html'>{esc(o['name'])}</a> "
-            f"({o['n_labelers']} {'company' if o['n_labelers'] == 1 else 'companies'})</li>"
-            if o["family"] in slugs
-            else f"<li>{esc(o['name'])} ({o['n_labelers']} companies)</li>"
-            for o in alts["other_forms"]
-        )
-        or "<li>No other forms listed.</li>"
-    )
+    form_items = [
+        f"<a href='{esc(slugs[o['family']])}.html'>{esc(o['name'])}</a> "
+        f"({o['n_labelers']} {'company' if o['n_labelers'] == 1 else 'companies'})"
+        if o["family"] in slugs
+        else f"{esc(o['name'])} ({o['n_labelers']} companies)"
+        for o in alts["other_forms"]
+    ]
+    forms = show_more(form_items or ["No other forms listed."], FORMS_SHOWN, "forms")
     n_companies = "—" if e["n_labelers"] is None else e["n_labelers"]
     if e["in_shortage_now"]:
-        status = f"""<section class="verdict short alert" aria-label="Current status">
-<div class="what"><p class="eyebrow">In shortage now</p>{band_badge(None)}</div>
+        status = f"""<section class="verdict short" aria-label="Current status">
+<div class="what">{band_badge(None)}</div>
 <p>This drug family is on FDA's shortage list now. RxRadar only estimates the risk of
 <em>new</em> shortages, so it is not ranked. See
 <a href="https://www.accessdata.fda.gov/scripts/drugshortages/">FDA's drug shortage database</a>
@@ -417,15 +432,11 @@ for current status.</p>
 </section>"""
     else:
         n_ranked = sum(1 for f in data["families"] if f["rank"])
-        levels = [name for _, name in reversed(BANDS)]
-        lit = levels.index(e["band"])
-        meter = "".join(f"<i{' class=on' if i <= lit else ''}></i>" for i in range(len(levels)))
         status = f"""<section class="verdict {esc(e["band"])}" aria-label="Risk estimate">
 <div class="what">
 <p>Estimated chance of a new FDA-listed shortage in the next 90 days</p>
 <p class="figure">{pct(e["prob"])}</p>
 {band_badge(e["band"])}
-<div class="meter" aria-hidden="true">{meter}</div>
 </div>
 <dl>
 <div><dt>Versus a typical drug</dt><dd>{e["multiple"]}×</dd></div>
@@ -461,7 +472,7 @@ They describe statistical associations in past data, not causes.</p>"""
 {makers}
 {lost}
 <h2>Other forms of the same ingredient</h2>
-<ul>{forms}</ul>
+{forms}
 <p class="note">These are supply facts from FDA's NDC directory: other companies and other
 forms of the <em>same</em> active ingredient. They are not clinical substitutes. Ask a
 pharmacist or prescriber before any change.</p>
@@ -498,16 +509,18 @@ def all_page(data: dict) -> str:
     body = f"""
 <h1>All drugs</h1>
 <p class="lede">Search and filter every drug family RxRadar tracks. Drug groups are for browsing
-only: being in the same group doesn't mean two drugs can replace each other.</p>
-<form class="filters" onsubmit="return false">
-<div><label for="q">Drug name</label>
+only: being in the same group doesn't mean drugs can replace each other.</p>
+<form onsubmit="return false">
+<div class="search-row"><label for="q">Drug name</label>
 <input id="q" type="search" placeholder="e.g. cisplatin" autocomplete="off"></div>
+<details><summary>Filter by group, form or risk</summary><div class="filters">
 <div><label for="group">Drug group</label>
 <select id="group"><option value="">All groups</option>{group_opts}</select></div>
 <div><label for="form">Form</label>
 <select id="form"><option value="">All forms</option>{form_opts}</select></div>
 <div><label for="band">Risk band</label>
 <select id="band"><option value="">All bands</option>{band_opts}</select></div>
+</div></details>
 </form>
 <p id="count" class="note" aria-live="polite"></p>
 <div class="table-wrap"><table><thead><tr><th class="num">#</th><th>Drug family</th>
@@ -594,10 +607,12 @@ def fragile_page(data: dict) -> str:
 <p class="lede">Plain facts from FDA's NDC directory, not predictions. A drug with few companies
 listed has less backup if one has a problem. That doesn't mean a shortage is coming, and a
 listed company isn't always the one making the drug.</p>
-<h2>Lost a company in the past 6 months, {LOST_COMPANY_MAX_LEFT} or fewer left ({len(lost)})</h2>
-<div class="table-wrap"><table>{head}<tbody>{lost_rows}</tbody></table></div>
-<h2>Generics with one or two companies listed ({len(few)})</h2>
-<div class="table-wrap"><table>{head}<tbody>{few_rows}</tbody></table></div>
+<details class="section" open><summary><h2>Lost a company in the past 6 months,
+{LOST_COMPANY_MAX_LEFT} or fewer left ({len(lost)})</h2></summary>
+<div class="table-wrap"><table>{head}<tbody>{lost_rows}</tbody></table></div></details>
+<details class="section"><summary><h2>Generics with 1 or 2 companies listed
+({len(few)})</h2></summary>
+<div class="table-wrap"><table>{head}<tbody>{few_rows}</tbody></table></div></details>
 <p class="note">Lists show up to {FRAGILE_LIMIT} drugs. Company names are compared loosely, so a
 merger or rename can appear as a lost company, and many listed companies are repackagers rather
 than manufacturers.</p>"""
@@ -661,11 +676,11 @@ their outcomes are known, and scored here in public.</p>"""
             if n_scored
             else (
                 "No shortages have been scored yet: the first week finishes its 90 days about "
-                "three months after tracking began."
+                "3 months after tracking began."
             )
         )
         early = (
-            f"<p class='status'><strong>Too early to judge.</strong> {so_far} New FDA-listed "
+            f"<p><strong>Too early to judge.</strong> {so_far} New FDA-listed "
             "shortages are rare, so these numbers will swing a lot until there are dozens.</p>"
         )
     stats = stat_strip(

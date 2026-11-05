@@ -1,6 +1,7 @@
 """Static site build on a tiny synthetic scores.json."""
 
 import json
+import re
 import xml.etree.ElementTree as ET
 
 from rxradar.site.build import build_site
@@ -250,3 +251,26 @@ def test_chart_axis_is_round_and_a_missing_week_is_a_gap():
     svg = risk_chart([{**w, "prob": p} for w, p in zip(week, probs, strict=True)])
     path = svg.split('<path d="')[1].split('"')[0]
     assert path.count("M") == 2 and path.count("L") == 1  # the line lifts over the gap
+
+
+def test_stylesheet_keeps_the_design_rules(tmp_path):
+    """The mechanical parts of the style rules at the top of style.css."""
+    css = (build_site(scores(tmp_path), tmp_path / "public") / "style.css").read_text()
+    body = css.split("*/", 1)[1]
+    for banned in ("text-transform", "border-left", "gradient", "@keyframes", "animation"):
+        assert banned not in body
+    declarations = re.sub(r"/\*.*?\*/", "", body.split("--target: 2.75rem;", 1)[1], flags=re.S)
+    for prop in ("padding", "margin", "gap"):
+        for line in declarations.splitlines():
+            for chunk in line.split(";"):
+                if chunk.strip().startswith(f"{prop}:"):
+                    assert "rem" not in chunk and "px" not in chunk, chunk
+
+
+def test_long_lists_start_short():
+    from rxradar.site.build import show_more
+
+    short = show_more(["a"], 2, "companies")
+    assert "<details>" not in short
+    long = show_more(["a", "b", "c"], 2, "companies")
+    assert "Show all 3 companies" in long and long.index("<li>b") < long.index("<details>")
