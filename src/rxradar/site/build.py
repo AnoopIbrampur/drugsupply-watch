@@ -55,7 +55,7 @@ NAV = (
     ("index.html", "Watchlist"),
     ("all.html", "All drugs"),
     ("fragile.html", "Fragile supply"),
-    ("plants.html", "Plant simulator"),
+    ("plants.html", "Simulator"),
     ("shortages.html", "In shortage now"),
     ("track-record.html", "Track record"),
     ("about.html", "Method &amp; limits"),
