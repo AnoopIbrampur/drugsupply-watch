@@ -420,3 +420,25 @@ GitHub's servers (2026-11-05) checked 200 labels with no failures and found 0 ne
 so DailyMed allows it. Adding a new version from there hasn't happened yet, and the weekly
 inspection refresh first runs inside the nightly job on Monday. The DUNS map can't refresh there, because FDA blocks those files, so
 new factories stay unmatched until it's rebuilt from a home connection.
+
+## Plant map (DailyMed bulk labels), 2026-11-07
+
+- **Source.** DailyMed's 6 Rx bulk zips, about 3 GB each, read on a GitHub runner in 9
+  minutes. 55,126 labels, 0 unreadable. 41,759 of them name at least one plant.
+- **Surprise: operation names aren't standardized.** `MANUFACTURE`, `manufacture` and
+  `Manufacture` all appear, so they're upper-cased before use. Before that fix, only
+  1,645 families had a manufacturing plant.
+- **Surprise: labels hold no plant country or FEI** in the fields read, so location comes
+  from FDA's registration file by DUNS. 45 of 2,809 plants have no location.
+- **Coverage.** 2,809 plants are linked to 2,154 of 3,393 site families. The rest have
+  no plant named for a current product, and are shown as unknown. 738 families have 1
+  known finished-product plant and 1,100 have 1 or 2. These count plants named on labels,
+  so a plant that's listed but idle counts, and a plant missing from labels doesn't.
+- **Active ingredients are thin.** Only 632 families have an ingredient plant named, so
+  counts by country understate foreign dependence.
+- **Not checked.** One plant can hold 2 DUNS numbers, which would overcount its drugs'
+  plants slightly. The registration file is from 2026-10-29, built on a home connection
+  because FDA blocks it from GitHub's servers.
+- **Helene.** The archive gap (2024-09-06 to 2025-09-05) covers the storm, and openFDA
+  keeps only shortages still listed, so the replay's list of FDA additions comes from
+  news reports. Lactated Ringer's in the first capture after the gap agrees with them.

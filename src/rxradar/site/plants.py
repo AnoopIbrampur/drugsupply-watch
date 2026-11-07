@@ -138,7 +138,8 @@ function choices(term) {
   if (named.length > 1) add('company=' + term, 'Every plant named "' + term + '"', named.length);
   for (const p of named.concat(map.plants.filter(p => p[P.city].toLowerCase().includes(t)
       && !named.includes(p))).slice(0, 12)) {
-    add('plant=' + p[P.slug], p[P.name] + ', ' + [p[P.city], p[P.country]].filter(Boolean).join(', '), 0);
+    const where = [p[P.city], p[P.country]].filter(Boolean).join(', ');
+    add('plant=' + p[P.slug], p[P.name] + ', ' + where, 0);
   }
   return list.slice(0, 16);
 }
@@ -155,7 +156,8 @@ function selected(hash) {
   const plants = map.plants.filter(f);
   if (!plants.length) return null;
   const names = {country: 'Every plant in ' + value, state: 'Every plant in ' + value,
-    company: 'Every plant named "' + value + '"', plant: plants[0][P.name]};
+    company: 'Every plant named "' + value + '"',
+    plant: [plants[0][P.name], plants[0][P.city], plants[0][P.country]].filter(Boolean).join(', ')};
   return {plants, name: names[kind]};
 }
 
@@ -303,11 +305,10 @@ def plant_page(p: dict, fams: dict, known: dict[str, int], data: dict) -> str:
             "fixed.</p>"
         )
     else:
-        record = (
-            "<p>No FDA inspection result is linked to this plant, so its record is unknown.</p>"
-        )
+        record = "<p>No FDA inspection is linked to this plant, so its record is unknown.</p>"
     body = f"""
-<p class="crumbs"><a href="../plants.html">Plant simulator</a> / {esc(p["country"] or "Unknown")}</p>
+<p class="crumbs"><a href="../plants.html">Plant simulator</a> /
+{esc(p["country"] or "Unknown")}</p>
 <h1>{esc(p["name"])}</h1>
 <p class="sub">{esc(place(p))}</p>
 {stats}

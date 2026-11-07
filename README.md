@@ -4,6 +4,10 @@ An early-warning watchlist for new US drug shortages, built only from public FDA
 Medicaid data. **[See the live site](https://anoopibrampur.github.io/drugsupply-watch/)**, updated
 nightly, or read the **[case study](docs/case_study.md)**.
 
+The site also has a **[plant failure simulator](https://anoopibrampur.github.io/drugsupply-watch/plants.html)**:
+pick a plant, company, US state or country and see which drugs are named as made there,
+and how many other known plants each has. It shows exposure, not a prediction.
+
 Formerly named RxRadar. The Python package and command are still called `rxradar`.
 
 For each drug (same ingredient, form and route), DrugSupply Watch estimates the chance of a new

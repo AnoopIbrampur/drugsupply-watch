@@ -231,3 +231,9 @@ again once a year of live scores exists.
   recall-heavy manufacturers (#1: 0.9% sodium chloride injection, 7.2%).
 - For many families the top reason is just "sterile injectable". That matches
   the ablation: drug type carries most of the signal.
+
+## Plant data is not a model input
+
+The plant map and simulator don't affect any risk estimate. A pre-registered test
+(decisions D13) didn't show that few known plants goes with more shortages: rate ratio
+1.31, 95% CI 0.90 to 1.97.
