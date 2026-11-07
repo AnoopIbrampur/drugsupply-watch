@@ -292,3 +292,18 @@ cut-offs of 1 against 2 or more.
 They also include sites that only test or package, because those older label versions
 were stored without operations. Labels were chosen from companies still selling today
 (see D11). The 2024-25 archive gap removes the Helene period from this test.
+
+### D13 result, 2026-11-07: not shown
+
+1,826 families, 378,566 family-weeks and 1,471 family-weeks followed by a new shortage
+within 90 days. Few plants 0.43%, many plants 0.34%.
+
+| Comparison | Crude rate ratio | Adjusted rate ratio [95% CI] |
+|---|---|---|
+| 1 or 2 plants vs 3 or more (decides) | 1.26 | 1.31 [0.90, 1.97] |
+| 1 plant vs 2 or more (reported only) | 1.13 | 1.22 [0.82, 1.74] |
+
+The CI includes 1, so the rule isn't met. The direction fits the idea, but past data
+doesn't show that few known plants goes with more shortages once drug type and company
+count are accounted for. The site presents plant counts as facts and says this. It
+doesn't call a drug riskier for having few known plants.
