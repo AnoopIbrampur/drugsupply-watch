@@ -8,6 +8,7 @@ drugs pages. Every value is HTML-escaped. Pages:
   chart, makers and other forms of the same ingredient);
 - all.html: search and filter every family;
 - fragile.html: drugs with few listed companies, or that recently lost one;
+- plants.html, plant/<slug>.html, helene.html: see site/plants.py;
 - shortages.html: families on FDA's shortage list now (not ranked);
 - track-record.html: live results from frozen predictions;
 - about.html: method, backtest results, limits, sources;
@@ -54,6 +55,7 @@ NAV = (
     ("index.html", "Watchlist"),
     ("all.html", "All drugs"),
     ("fragile.html", "Fragile supply"),
+    ("plants.html", "Plant simulator"),
     ("shortages.html", "In shortage now"),
     ("track-record.html", "Track record"),
     ("about.html", "Method &amp; limits"),
@@ -399,7 +401,7 @@ reads only some labels. Results can appear here up to about 2 years late, becaus
 when most were released. These facts don't affect the risk estimate.</p></details>"""
 
 
-def drug_page(e: dict, data: dict, slugs: dict[str, str]) -> str:
+def drug_page(e: dict, data: dict, slugs: dict[str, str], known_plants: str = "") -> str:
     reasons = "".join(f"<li>{esc(r)}</li>" for r in e["reasons"])
     reasons = reasons or (
         "<li>No drug-specific warning signs. Its risk reflects its drug type.</li>"
@@ -478,6 +480,7 @@ They describe statistical associations in past data, not causes.</p>"""
 <h2>Who makes it</h2>
 {makers}
 {lost}
+{known_plants}
 <h2>Other forms of the same ingredient</h2>
 {forms}
 <p class="note">These are supply facts from FDA's NDC directory: other companies and other
@@ -779,6 +782,9 @@ since 2014 for history.</li>
 nutrition and dialysis fluids) can't be matched to a drug family and are missing.</li>
 <li>FDA inspection results are shown on drug pages but don't affect the estimate: a test fixed
 in advance didn't show that they improve it.</li>
+<li>The plant map uses drug labels, which don't show how much each plant makes, and about
+a third of drug families have no plant named. See the
+<a href="plants.html">plant simulator</a>.</li>
 <li>Prices come from retail pharmacies, so hospital injectables often have no price.</li>
 <li>Model: calibrated logistic regression, trained through
 {esc(data["model"]["trained_through"])}.</li>
@@ -854,8 +860,15 @@ def build_site(scores_path: Path | None = None, out: Path | None = None) -> Path
     track_path = scores_path.parent / "track_record.json"
     track = json.loads(track_path.read_text()) if track_path.exists() else None
     (out / "track-record.html").write_text(track_page(track, data))
+    from rxradar.site.plants import build_plant_pages, known_plants_section, plants_by_family
+
+    map_path = scores_path.parent / "plant_map.json"
+    plant_map = json.loads(map_path.read_text()) if map_path.exists() else None
+    by_family = plants_by_family(plant_map)
     for e in data["families"]:
-        (out / "drug" / f"{e['slug']}.html").write_text(drug_page(e, data, slugs))
+        plants = "" if by_family is None else known_plants_section(by_family.get(e["family"], []))
+        (out / "drug" / f"{e['slug']}.html").write_text(drug_page(e, data, slugs, plants))
+    build_plant_pages(plant_map, data, out)
     search = [
         {
             "n": e["name"],

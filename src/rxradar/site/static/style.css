@@ -105,6 +105,8 @@ details ul { margin-bottom: 0; }
 input[type=search], select { width: 100%; min-height: var(--target); padding: var(--s2) var(--s3);
   font: inherit; color: var(--ink); background: transparent;
   border: 1px solid var(--line-strong); border-radius: var(--radius); }
+.hits { list-style: none; padding: 0; margin: var(--s2) 0 0; }
+.hits li { padding: var(--s2) 0; border-top: 1px solid var(--line); font-size: var(--t-sm); }
 #results { list-style: none; padding: 0; margin: 0; }
 #results:not(:empty) { margin-top: var(--s2); max-height: 18rem; overflow-y: auto; }
 #results li { display: flex; justify-content: space-between; gap: var(--s4); padding: var(--s2) 0;

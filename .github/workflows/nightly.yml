@@ -42,6 +42,11 @@ jobs:
         run: |
           gh release download state --pattern state.tar.gz --dir "$RUNNER_TEMP"
           uv run rxradar state unpack "$RUNNER_TEMP/state.tar.gz"
+      - name: Restore the plant map's label data
+        run: |
+          dir="data/raw/spl_sites/$(gh release view state --json assets -q '.assets[]|select(.name=="spl_sites.parquet")|.updatedAt[:10]')"
+          mkdir -p "$dir"
+          gh release download state --pattern spl_sites.parquet --output "$dir/sites.parquet"
       - name: Ingest, rebuild, score, freeze, build site
         run: uv run rxradar nightly
         env:

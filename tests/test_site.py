@@ -274,3 +274,49 @@ def test_long_lists_start_short():
     assert "<details>" not in short
     long = show_more(["a", "b", "c"], 2, "companies")
     assert "Show all 3 companies" in long and long.index("<li>b") < long.index("<details>")
+
+
+def plant_map():
+    return {
+        "as_of": "2026-11-07",
+        "labels": 10,
+        "helene": ["evil|INJECTION|PARENTERAL"],
+        "plants": [
+            {
+                "slug": "plant-a-marion-abc123",
+                "name": "Plant <A>",
+                "city": "Marion",
+                "region": "North Carolina",
+                "country": "United States",
+                "finished": ["evil|INJECTION|PARENTERAL"],
+                "ingredient": ["steady|INJECTION|PARENTERAL"],
+                "inspected": False,
+                "failed_3y": 0,
+                "actions_3y": 0,
+            }
+        ],
+    }
+
+
+def test_plant_pages_say_exposed_and_treat_unknown_as_unknown(tmp_path):
+    scores_path = scores(tmp_path)
+    (tmp_path / "plant_map.json").write_text(json.dumps(plant_map()))
+    out = build_site(scores_path, tmp_path / "public")
+    sim = (out / "plants.html").read_text()
+    assert "exposure, not a" in sim and "not a risk score" in sim
+    assert "not clinical advice" in sim
+    plant = (out / "plant" / "plant-a-marion-abc123.html").read_text()
+    assert "Plant &lt;A&gt;" in plant and "record is unknown" in plant
+    assert "1 plant is named" in (out / "drug" / "evil.html").read_text()
+    assert "doesn't mean it's safe" in (out / "drug" / "short.html").read_text()
+    compact = json.loads((out / "plants.json").read_text())
+    assert compact["known"] == [1, 0, 0] and compact["plants"][0][5] == [0]
+    helene = (out / "helene.html").read_text()
+    assert "not proof" in helene and "2024-09-06" in helene
+
+
+def test_a_build_without_a_plant_map_still_works(tmp_path):
+    out = build_site(scores(tmp_path), tmp_path / "public")
+    assert "hasn't been built" in (out / "plants.html").read_text()
+    assert not (out / "plants.json").exists()
+    assert "Known plants" not in (out / "drug" / "evil.html").read_text()

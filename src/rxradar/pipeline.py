@@ -22,6 +22,7 @@ Nightly (``nightly``):
 from __future__ import annotations
 
 import datetime as dt
+import json
 import logging
 import tarfile
 from pathlib import Path
@@ -72,6 +73,7 @@ def nightly(today: dt.date | None = None) -> None:
     from rxradar.site.build import build_site
     from rxradar.track import update_track_record
     from rxradar.transform.build import build_all
+    from rxradar.transform.plants import build_plant_map
 
     today = today or dt.date.today()
     failed = []
@@ -106,7 +108,15 @@ def nightly(today: dt.date | None = None) -> None:
     build_features()
     if today.day == 1 or not (derived_dir() / "model.json").exists():
         train(pd.Timestamp(today))
-    update_track_record(score(), site_data_dir())
+    scores = score()
+    update_track_record(scores, site_data_dir())
+    try:
+        plant_map = build_plant_map([e["family"] for e in scores["families"]])
+        if plant_map is not None:
+            (site_data_dir() / "plant_map.json").write_text(json.dumps(plant_map))
+    except Exception:
+        log.exception("plant map failed; keeping the previous one")
+        failed.append("plant_map")
     build_site()
     if failed:
         log.warning("nightly finished with stale sources: %s", ", ".join(failed))
