@@ -266,3 +266,29 @@ says the project is about supply, not treatment. The Python package, the `rxrada
 and the `RXRADAR_*` settings keep their old name: they aren't public-facing, and changing
 them would put the nightly pipeline at risk for no gain to readers. The frozen prediction
 files are untouched, so the public record carries on through the rename.
+
+## D13. Do fewer known plants mean more shortages? — FIXED 2026-11-07, before any result
+
+Written before this comparison was run. The factory simulator shows how many known
+plants a drug has, so the site should only imply that few plants means more risk if past
+data supports it. This test decides the wording. It doesn't change the risk model.
+
+**Data.** Family-weeks in the backtest test years with a known status, not in shortage,
+with a known 90-day outcome and at least 1 linked plant (`insp_n_factories`).
+
+**Compared.** Few plants (1 or 2) against many (3 or more), on new FDA-listed shortages
+within 90 days. The measure is a Mantel-Haenszel rate ratio within strata of injectable
+or not, crossed with listed companies (1, 2 to 3, 4 or more), so drug type and company
+count don't explain the result. The 95% CI comes from resampling families.
+
+**Rule.** The site may say few known plants has gone with more shortages only if the
+rate ratio is above 1 and its 95% CI excludes 1. Otherwise it says past data doesn't show
+that, and plant counts are presented as facts only.
+
+**Reported but not used to decide.** The unadjusted rate ratio, and the result with
+cut-offs of 1 against 2 or more.
+
+**Known limits.** Plant counts come from up to 5 labels per family, so they undercount.
+They also include sites that only test or package, because those older label versions
+were stored without operations. Labels were chosen from companies still selling today
+(see D11). The 2024-25 archive gap removes the Helene period from this test.

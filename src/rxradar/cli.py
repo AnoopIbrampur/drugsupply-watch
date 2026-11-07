@@ -49,6 +49,10 @@ def ingest(source: str) -> None:
         from rxradar.ingest import fda_registry
 
         fda_registry.ingest(_openfda_client(), sources=("fda_ndc_text",))
+    if source == "spl_sites":  # 18 GB of downloads: its own workflow, not part of "all"
+        from rxradar.ingest import spl_sites
+
+        spl_sites.ingest()
     if source in ("all", "warning_letters"):
         from rxradar.ingest import warning_letters
 
@@ -85,6 +89,7 @@ def main(argv: list[str] | None = None) -> None:
             "warning_letters",
             "nadac",
             "dashboard",
+            "spl_sites",
         ],
     )
     sub.add_parser("build", help="rebuild derived tables (families, labels, panel)")

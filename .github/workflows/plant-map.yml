@@ -1,0 +1,28 @@
+name: plant-map
+# Read every current Rx label's plants from DailyMed's bulk files and publish the
+# result for the nightly build. DailyMed refreshes them monthly; about 18 GB to read.
+on:
+  schedule:
+    - cron: "41 6 9 * *"  # the 9th of each month
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --locked
+      - run: uv run rxradar ingest spl_sites
+      - name: Publish
+        run: |
+          cp data/raw/spl_sites/*/sites.parquet "$RUNNER_TEMP/spl_sites.parquet"
+          gh release upload state "$RUNNER_TEMP/spl_sites.parquet" --clobber
